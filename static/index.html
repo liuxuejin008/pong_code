@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini-Agile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['DM Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#fefce8',
+                            100: '#fef9c3',
+                            200: '#fef08a',
+                            300: '#fde047',
+                            400: '#facc15',
+                            500: '#eab308',
+                        },
+                        purple: {
+                            50: '#faf5ff',
+                            100: '#f3e8ff',
+                            200: '#e9d5ff',
+                            300: '#d8b4fe',
+                            400: '#c084fc',
+                            500: '#a855f7',
+                            600: '#9333ea',
+                            700: '#7e22ce',
+                            800: '#6b21a8',
+                            900: '#581c87',
+                        },
+                        sidebar: {
+                            DEFAULT: '#1a1625',
+                            light: '#251d35',
+                            hover: '#2f2542',
+                            active: '#3d2f57',
+                            border: 'rgba(255,255,255,0.06)'
+                        },
+                        surface: {
+                            50: '#fafafa',
+                            100: '#f5f5f5',
+                            200: '#eeeeee',
+                            300: '#e0e0e0',
+                        }
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            font-family: 'DM Sans', sans-serif;
+        }
+        body { 
+            background: linear-gradient(135deg, #f5f7fa 0%, #f0f2f5 100%);
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db; 
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af; 
+        }
+        
+        .sidebar-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.12);
+        }
+        .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        /* Kanban */
+        .kanban-col { min-height: 150px; }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+        
+        .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+        .animate-slide-up { animation: slideUp 0.35s ease-out; }
+        
+        /* Filter Pills */
+        .filter-pill {
+            transition: all 0.15s ease;
+        }
+        .filter-pill:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        /* Nav active indicator */
+        .nav-item {
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        .nav-item.active {
+            background: linear-gradient(90deg, rgba(168,85,247,0.15) 0%, rgba(168,85,247,0.05) 100%);
+        }
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 8px;
+            bottom: 8px;
+            width: 3px;
+            background: linear-gradient(180deg, #a855f7, #7c3aed);
+            border-radius: 0 2px 2px 0;
+        }
+        
+        /* Sidebar badge */
+        .sidebar-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Table row hover */
+        .table-row {
+            transition: background 0.15s ease;
+        }
+        .table-row:hover {
+            background: #fafbfc;
+        }
+        
+        /* Status dot animation */
+        .status-dot-active {
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        
+        /* Chart gradient */
+        .chart-area {
+            background: linear-gradient(180deg, rgba(168,85,247,0.08) 0%, rgba(168,85,247,0) 100%);
+            border-bottom: 1px solid rgba(168,85,247,0.2);
+        }
+        
+        /* Dropdown styles */
+        .dropdown-menu {
+            transform-origin: top;
+            transition: all 0.2s ease;
+        }
+        
+        /* Enhanced filter chip */
+        .filter-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .filter-chip:hover {
+            background: #e5e7eb;
+            border-color: #d1d5db;
+        }
+        .filter-chip.active {
+            background: #ede9fe;
+            border-color: #a855f7;
+            color: #7e22ce;
+        }
+        
+        /* Stats card */
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        }
+        
+        /* Chart container */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        /* Enhanced table */
+        .enhanced-table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .enhanced-table thead th {
+            position: sticky;
+            top: 0;
+            background: #fafbfc;
+            z-index: 10;
+        }
+        .enhanced-table tbody tr {
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .enhanced-table tbody tr:last-child {
+            border-bottom: none;
+        }
+        
+        /* Badge styles */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1;
+        }
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .badge-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .badge-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .badge-purple {
+            background: #ede9fe;
+            color: #6b21a8;
+        }
+        
+        /* SortableJS Custom Classes */
+        .sortable-ghost {
+            opacity: 0.3;
+            transform: rotate(3deg);
+        }
+        .sortable-drag {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transform: scale(1.05);
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex overflow-hidden">
+    
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-52 bg-sidebar flex-col hidden md:flex shrink-0 z-30">
+        <!-- Populated by JS -->
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col min-w-0 relative">
+        <!-- Top Header -->
+        <header id="main-header" class="bg-white/80 backdrop-blur-lg border-b border-gray-200/60 h-14 flex items-center justify-between px-6 shrink-0 z-20 shadow-sm">
+            <div class="flex items-center gap-4">
+                <!-- Mobile Menu Toggle -->
+                <button class="md:hidden text-gray-500 hover:text-gray-700 w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-all">
+                    <i class="fa-solid fa-bars text-sm"></i>
+                </button>
+                
+                <!-- Page Title / Breadcrumbs -->
+                <div id="top-context" class="flex items-center text-sm">
+                    <!-- Dynamic -->
+                </div>
+            </div>
+             
+            <div class="flex items-center gap-2" id="nav-user-menu">
+               <!-- User menu -->
+            </div>
+        </header>
+
+        <!-- Sub Header with Selectors & Search (conditional) -->
+        <div id="sub-header" class="hidden bg-white border-b border-gray-100 px-4 py-2 shrink-0">
+            <div class="flex items-center gap-3 flex-wrap">
+                <!-- Selectors and Search -->
+            </div>
+        </div>
+
+        <!-- Filter Bar (conditional) -->
+        <div id="filter-bar" class="hidden bg-white border-b border-gray-100 px-4 py-2 shrink-0">
+            <div class="flex items-center gap-2 overflow-x-auto">
+                <!-- Filter pills -->
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main id="app-container" class="flex-1 overflow-auto bg-gray-50/50">
+            <div id="loading" class="flex flex-col justify-center items-center h-full text-gray-400 gap-3">
+                <div class="w-8 h-8 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+                <span class="text-sm">加载中...</span>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center hidden transition-opacity opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden transform transition-all scale-95 border border-gray-200" id="modal-content">
+            <!-- Modal Content -->
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
