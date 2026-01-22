@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy import func
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from extensions import db, login_manager
@@ -97,12 +98,20 @@ class Sprint(db.Model):
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     
     issues = db.relationship('Issue', backref='sprint', lazy='dynamic')
+    work_logs = db.relationship('SprintWorkLog', backref='sprint', lazy='dynamic')
     owner = db.relationship('User', backref='owned_sprints')
 
     def to_dict(self):
         total_issues = self.issues.count()
         done_issues = self.issues.filter_by(status='done').count()
         progress = int((done_issues / total_issues * 100)) if total_issues > 0 else 0
+        issue_hours = db.session.query(func.coalesce(func.sum(WorkLog.hours), 0)).join(
+            Issue, WorkLog.issue_id == Issue.id
+        ).filter(Issue.sprint_id == self.id).scalar() or 0
+        sprint_hours = db.session.query(func.coalesce(func.sum(SprintWorkLog.hours), 0)).filter(
+            SprintWorkLog.sprint_id == self.id
+        ).scalar() or 0
+        time_spent = float(issue_hours) + float(sprint_hours)
         
         # Map DB status to UI friendly status/Chinese if needed, or keep simple
         # For this demo, let's keep English internal but maybe add display label
@@ -120,6 +129,7 @@ class Sprint(db.Model):
             'status': self.status,
             'status_label': status_label,
             'progress': progress,
+            'time_spent': time_spent,
             'project_id': self.project_id,
             'description': self.description,
             'goal': self.goal,
@@ -162,6 +172,27 @@ class Issue(db.Model):
 
     def __repr__(self):
         return f'<Issue {self.title}>'
+
+class SprintWorkLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sprint_id = db.Column(db.Integer, db.ForeignKey('sprint.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    date = db.Column(db.Date, default=datetime.utcnow)
+    hours = db.Column(db.Float, nullable=False)
+    description = db.Column(db.String(255))
+
+    user = db.relationship('User', backref='sprint_work_logs')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'sprint_id': self.sprint_id,
+            'user_id': self.user_id,
+            'user_name': self.user.username,
+            'date': self.date.isoformat(),
+            'hours': self.hours,
+            'description': self.description
+        }
 
 class WorkLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)

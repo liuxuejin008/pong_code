@@ -1,7 +1,7 @@
 from flask import Flask, redirect, url_for, request, jsonify, send_from_directory
 from flask_login import login_user, logout_user, current_user, login_required
 from extensions import db, login_manager
-from models import User, Organization, Project, Sprint, Issue, WorkLog, Requirement, organization_members
+from models import User, Organization, Project, Sprint, Issue, WorkLog, SprintWorkLog, Requirement, organization_members
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 import os
@@ -237,6 +237,70 @@ def create_sprint(project_id):
     db.session.add(sprint)
     db.session.commit()
     return jsonify(sprint.to_dict()), 201
+
+@app.route('/api/sprints/<int:sprint_id>', methods=['GET'])
+@login_required
+def get_sprint(sprint_id):
+    sprint = Sprint.query.get_or_404(sprint_id)
+    logs = sprint.work_logs.order_by(SprintWorkLog.date.desc()).all()
+    return jsonify({
+        'sprint': sprint.to_dict(),
+        'work_logs': [l.to_dict() for l in logs]
+    })
+
+@app.route('/api/sprints/<int:sprint_id>', methods=['PUT'])
+@login_required
+def update_sprint(sprint_id):
+    sprint = Sprint.query.get_or_404(sprint_id)
+    data = request.get_json()
+
+    if 'name' in data:
+        sprint.name = data['name']
+    if 'status' in data:
+        sprint.status = data['status']
+    if 'description' in data:
+        sprint.description = data['description']
+    if 'goal' in data:
+        sprint.goal = data['goal']
+    if 'category' in data:
+        sprint.category = data['category']
+    if 'owner_id' in data:
+        sprint.owner_id = int(data['owner_id']) if data['owner_id'] else None
+
+    if 'start_date' in data:
+        sprint.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date() if data['start_date'] else None
+    if 'end_date' in data:
+        sprint.end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date() if data['end_date'] else None
+
+    db.session.commit()
+    return jsonify(sprint.to_dict())
+
+@app.route('/api/sprints/<int:sprint_id>/worklogs', methods=['POST'])
+@login_required
+def add_sprint_worklog(sprint_id):
+    sprint = Sprint.query.get_or_404(sprint_id)
+    data = request.get_json()
+
+    try:
+        log_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format'}), 400
+
+    log = SprintWorkLog(
+        sprint_id=sprint.id,
+        user_id=current_user.id,
+        date=log_date,
+        hours=float(data['hours']),
+        description=data.get('description', '')
+    )
+
+    db.session.add(log)
+    db.session.commit()
+
+    return jsonify({
+        'log': log.to_dict(),
+        'sprint': sprint.to_dict()
+    }), 201
 
 @app.route('/api/projects/<int:project_id>/board', methods=['GET'])
 @login_required

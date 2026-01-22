@@ -11,6 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -281,17 +282,17 @@
         }
     </style>
 </head>
-<body class="text-gray-800 h-screen flex overflow-hidden">
+<body id="app" class="text-gray-800 h-screen flex overflow-hidden">
     
     <!-- Sidebar -->
-    <aside id="sidebar" class="w-52 bg-sidebar flex-col hidden md:flex shrink-0 z-30">
+    <aside id="sidebar" class="w-52 bg-sidebar flex-col md:flex shrink-0 z-30" :class="{ 'hidden': !showSidebar }" v-html="sidebarHtml">
         <!-- Populated by JS -->
     </aside>
 
     <!-- Main Content Wrapper -->
     <div class="flex-1 flex flex-col min-w-0 relative">
         <!-- Top Header -->
-        <header id="main-header" class="bg-white/80 backdrop-blur-lg border-b border-gray-200/60 h-14 flex items-center justify-between px-6 shrink-0 z-20 shadow-sm">
+        <header id="main-header" class="bg-white/80 backdrop-blur-lg border-b border-gray-200/60 h-14 flex items-center justify-between px-6 shrink-0 z-20 shadow-sm" :class="{ 'hidden': !showHeader }">
             <div class="flex items-center gap-4">
                 <!-- Mobile Menu Toggle -->
                 <button class="md:hidden text-gray-500 hover:text-gray-700 w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-all">
@@ -299,12 +300,12 @@
                 </button>
                 
                 <!-- Page Title / Breadcrumbs -->
-                <div id="top-context" class="flex items-center text-sm">
+                <div id="top-context" class="flex items-center text-sm" v-html="topContextHtml">
                     <!-- Dynamic -->
                 </div>
             </div>
              
-            <div class="flex items-center gap-2" id="nav-user-menu">
+            <div class="flex items-center gap-2" id="nav-user-menu" v-html="navHtml">
                <!-- User menu -->
             </div>
         </header>
@@ -325,20 +326,36 @@
 
         <!-- Main Content -->
         <main id="app-container" class="flex-1 overflow-auto bg-gray-50/50">
-            <div id="loading" class="flex flex-col justify-center items-center h-full text-gray-400 gap-3">
+            <div v-if="isLoading" id="loading" class="flex flex-col justify-center items-center h-full text-gray-400 gap-3">
                 <div class="w-8 h-8 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
                 <span class="text-sm">加载中...</span>
             </div>
+            <div v-else v-html="mainHtml"></div>
         </main>
     </div>
 
     <!-- Modal Overlay -->
-    <div id="modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center hidden transition-opacity opacity-0">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden transform transition-all scale-95 border border-gray-200" id="modal-content">
+    <div id="modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center transition-opacity" :class="showModal ? 'opacity-100' : 'opacity-0 pointer-events-none'" @click.self="modals.close()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden transform transition-all border border-gray-200" id="modal-content" :class="showModal ? 'scale-100' : 'scale-95'">
             <!-- Modal Content -->
+            <div v-html="modalHtml"></div>
         </div>
     </div>
 
+    <script src="js/app.core.js"></script>
+    <script src="js/app.views.auth.js"></script>
+    <script src="js/app.views.dashboard.js"></script>
+    <script src="js/app.views.sprints.js"></script>
+    <script src="js/app.views.board.js"></script>
+    <script src="js/app.views.requirements.js"></script>
+    <script src="js/app.views.js"></script>
+    <script src="js/app.handlers.js"></script>
+    <script src="js/app.modals.core.js"></script>
+    <script src="js/app.modals.org.js"></script>
+    <script src="js/app.modals.sprint.js"></script>
+    <script src="js/app.modals.issue.js"></script>
+    <script src="js/app.modals.requirement.js"></script>
+    <script src="js/app.modals.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
