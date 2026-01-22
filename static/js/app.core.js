@@ -121,6 +121,22 @@
                         this.setAuthLayout(false);
                         this.viewRequirements(data.id, data.params);
                         break;
+                    case 'org_members':
+                        this.setAuthLayout(false);
+                        this.viewOrgMembers(data.id);
+                        break;
+                    case 'organizations':
+                        this.setAuthLayout(false);
+                        this.viewOrganizations();
+                        break;
+                    case 'teams':
+                        this.setAuthLayout(false);
+                        this.viewTeams(data.id);
+                        break;
+                    case 'team_details':
+                        this.setAuthLayout(false);
+                        this.viewTeamDetails(data.id);
+                        break;
                     default:
                         this.setAuthLayout(false);
                         this.viewLogin();
@@ -295,12 +311,12 @@
                                     <i class="fa-solid fa-house w-5 text-center mr-3 text-base ${this.currentView === 'dashboard' ? 'text-purple-400' : 'text-gray-500'}"></i>
                                     控制台
                                 </a>
-                                <a href="#" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-gray-300 hover:bg-sidebar-hover hover:text-white transition-all">
-                                    <i class="fa-solid fa-building w-5 text-center mr-3 text-base text-gray-500"></i>
+                                <a href="#" onclick="app.navigate('organizations')" class="nav-item group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all ${this.currentView === 'organizations' || this.currentView === 'org_members' ? 'active text-purple-300' : 'text-gray-300 hover:bg-sidebar-hover hover:text-white'}">
+                                    <i class="fa-solid fa-building w-5 text-center mr-3 text-base ${this.currentView === 'organizations' || this.currentView === 'org_members' ? 'text-purple-400' : 'text-gray-500'}"></i>
                                     组织
                                 </a>
-                                <a href="#" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-gray-300 hover:bg-sidebar-hover hover:text-white transition-all">
-                                    <i class="fa-solid fa-users w-5 text-center mr-3 text-base text-gray-500"></i>
+                                <a href="#" onclick="app.modals.selectOrgForTeams()" class="nav-item group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all ${this.currentView === 'teams' || this.currentView === 'team_details' ? 'active text-purple-300' : 'text-gray-300 hover:bg-sidebar-hover hover:text-white'}">
+                                    <i class="fa-solid fa-users w-5 text-center mr-3 text-base ${this.currentView === 'teams' || this.currentView === 'team_details' ? 'text-purple-400' : 'text-gray-500'}"></i>
                                     团队
                                 </a>
                             </nav>
@@ -360,6 +376,7 @@
                 login: this.handlersLogin.bind(this),
                 register: this.handlersRegister.bind(this),
                 submitOrg: this.handlersSubmitOrg.bind(this),
+                joinOrg: this.handlersJoinOrg.bind(this),
                 submitProject: this.handlersSubmitProject.bind(this),
                 submitSprint: this.handlersSubmitSprint.bind(this),
                 updateSprint: this.handlersUpdateSprint.bind(this),
@@ -369,13 +386,18 @@
                 submitWorkLog: this.handlersSubmitWorkLog.bind(this),
                 createRequirement: this.handlersCreateRequirement.bind(this),
                 updateRequirement: this.handlersUpdateRequirement.bind(this),
-                deleteRequirement: this.handlersDeleteRequirement.bind(this)
+                deleteRequirement: this.handlersDeleteRequirement.bind(this),
+                submitTeam: this.handlersSubmitTeam.bind(this),
+                joinTeam: this.handlersJoinTeam.bind(this),
+                leaveTeam: this.handlersLeaveTeam.bind(this),
+                addTeamMember: this.handlersAddTeamMember.bind(this)
             };
 
             this.modals = {
                 show: this.modalShow.bind(this),
                 close: this.modalClose.bind(this),
                 createOrg: this.modalCreateOrg.bind(this),
+                joinOrg: this.modalJoinOrg.bind(this),
                 createProject: this.modalCreateProject.bind(this),
                 createSprint: this.modalCreateSprint.bind(this),
                 editSprint: this.modalEditSprint.bind(this),
@@ -383,7 +405,10 @@
                 editIssue: this.modalEditIssue.bind(this),
                 createRequirement: this.modalCreateRequirement.bind(this),
                 viewRequirement: this.modalViewRequirement.bind(this),
-                editRequirement: this.modalEditRequirement.bind(this)
+                editRequirement: this.modalEditRequirement.bind(this),
+                createTeam: this.modalCreateTeam.bind(this),
+                addTeamMember: this.modalAddTeamMember.bind(this),
+                selectOrgForTeams: this.modalSelectOrgForTeams.bind(this)
             };
 
             window.app = this;

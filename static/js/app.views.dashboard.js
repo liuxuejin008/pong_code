@@ -40,10 +40,16 @@
                             <h1 class="text-3xl font-bold text-gray-900 tracking-tight">欢迎回来，${this.user.username}</h1>
                             <p class="text-gray-500 mt-2 text-base">这是您的工作空间概览</p>
                         </div>
-                        <button onclick="app.modals.createOrg()" class="mt-4 md:mt-0 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-purple-500/30 transition-all flex items-center gap-2 hover:scale-105">
-                            <i class="fa-solid fa-plus"></i>
-                            <span>创建组织</span>
-                        </button>
+                        <div class="flex gap-3 mt-4 md:mt-0">
+                            <button onclick="app.modals.joinOrg()" class="bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50 font-semibold py-3 px-6 rounded-xl shadow-sm transition-all flex items-center gap-2 hover:scale-105">
+                                <i class="fa-solid fa-right-to-bracket"></i>
+                                <span>加入组织</span>
+                            </button>
+                            <button onclick="app.modals.createOrg()" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-purple-500/30 transition-all flex items-center gap-2 hover:scale-105">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>创建组织</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Stats Cards -->
@@ -107,10 +113,16 @@
                                         <i class="fa-solid fa-building text-3xl text-gray-400"></i>
                                     </div>
                                     <h3 class="text-xl font-semibold text-gray-900 mb-2">暂无组织</h3>
-                                    <p class="text-gray-500 mb-6 max-w-sm mx-auto">创建您的第一个组织，开始管理项目和团队</p>
-                                    <button onclick="app.modals.createOrg()" class="inline-flex items-center text-purple-600 font-semibold hover:text-purple-700 hover:underline">
-                                        <i class="fa-solid fa-plus mr-2"></i>创建组织
-                                    </button>
+                                    <p class="text-gray-500 mb-6 max-w-sm mx-auto">创建您的第一个组织或加入已有组织，开始管理项目和团队</p>
+                                    <div class="flex items-center justify-center gap-4">
+                                        <button onclick="app.modals.joinOrg()" class="inline-flex items-center text-purple-600 font-semibold hover:text-purple-700 hover:underline">
+                                            <i class="fa-solid fa-right-to-bracket mr-2"></i>加入组织
+                                        </button>
+                                        <span class="text-gray-400">或</span>
+                                        <button onclick="app.modals.createOrg()" class="inline-flex items-center text-purple-600 font-semibold hover:text-purple-700 hover:underline">
+                                            <i class="fa-solid fa-plus mr-2"></i>创建组织
+                                        </button>
+                                    </div>
                                 </div>
                             `}
                         </div>

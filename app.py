@@ -1,7 +1,7 @@
 from flask import Flask, redirect, url_for, request, jsonify, send_from_directory
 from flask_login import login_user, logout_user, current_user, login_required
 from extensions import db, login_manager
-from models import User, Organization, Project, Sprint, Issue, WorkLog, SprintWorkLog, Requirement, organization_members
+from models import User, Organization, Project, Sprint, Issue, WorkLog, SprintWorkLog, Requirement, Team, organization_members, team_members
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 import os
@@ -136,6 +136,54 @@ def create_organization():
     
     return jsonify(org.to_dict()), 201
 
+@app.route('/api/organizations/join', methods=['POST'])
+@login_required
+def join_organization():
+    """通过组织名称加入组织"""
+    data = request.get_json()
+    if not data or 'name' not in data:
+        return jsonify({'error': '请输入组织名称'}), 400
+    
+    org_name = data['name'].strip()
+    if not org_name:
+        return jsonify({'error': '组织名称不能为空'}), 400
+    
+    # 查找组织
+    org = Organization.query.filter_by(name=org_name).first()
+    if not org:
+        return jsonify({'error': '未找到该组织'}), 404
+    
+    # 检查是否已经是成员
+    is_member = db.session.query(organization_members).filter_by(
+        user_id=current_user.id,
+        organization_id=org.id
+    ).first() is not None
+    
+    if is_member:
+        return jsonify({'error': '您已经是该组织的成员'}), 400
+    
+    # 添加为普通成员
+    try:
+        statement = organization_members.insert().values(
+            user_id=current_user.id, 
+            organization_id=org.id, 
+            role='member'
+        )
+        db.session.execute(statement)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': '加入组织失败，请重试'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'服务器错误: {str(e)}'}), 500
+    
+    return jsonify({
+        'success': True, 
+        'message': f'成功加入组织 "{org.name}"',
+        'organization': org.to_dict()
+    })
+
 @app.route('/api/organizations/<int:org_id>', methods=['GET'])
 @login_required
 def get_organization_details(org_id):
@@ -156,6 +204,276 @@ def get_organization_details(org_id):
         'organization': org.to_dict(),
         'projects': projects
     })
+
+@app.route('/api/organizations/<int:org_id>/members', methods=['GET'])
+@login_required
+def get_organization_members(org_id):
+    """获取组织成员列表"""
+    org = Organization.query.get_or_404(org_id)
+
+    # Access check
+    is_owner = org.owner_id == current_user.id
+    is_member = db.session.query(organization_members).filter_by(
+        user_id=current_user.id,
+        organization_id=org_id
+    ).first() is not None
+
+    if not is_owner and not is_member:
+        return jsonify({'error': 'Access denied'}), 403
+
+    # 获取所有成员及其角色
+    members_data = db.session.query(
+        User, organization_members.c.role
+    ).join(
+        organization_members, User.id == organization_members.c.user_id
+    ).filter(
+        organization_members.c.organization_id == org_id
+    ).all()
+
+    members = []
+    for user, role in members_data:
+        member_info = user.to_dict()
+        member_info['role'] = role
+        member_info['is_owner'] = user.id == org.owner_id
+        members.append(member_info)
+
+    return jsonify({
+        'organization': org.to_dict(),
+        'members': members,
+        'total_count': len(members)
+    })
+
+# --- Team Routes ---
+
+@app.route('/api/organizations/<int:org_id>/teams', methods=['GET'])
+@login_required
+def get_organization_teams(org_id):
+    """获取组织下的所有团队"""
+    org = Organization.query.get_or_404(org_id)
+
+    # Access check
+    is_owner = org.owner_id == current_user.id
+    is_member = db.session.query(organization_members).filter_by(
+        user_id=current_user.id,
+        organization_id=org_id
+    ).first() is not None
+
+    if not is_owner and not is_member:
+        return jsonify({'error': 'Access denied'}), 403
+
+    teams = org.teams.all()
+    return jsonify({
+        'organization': org.to_dict(),
+        'teams': [t.to_dict() for t in teams],
+        'total_count': len(teams)
+    })
+
+@app.route('/api/organizations/<int:org_id>/teams', methods=['POST'])
+@login_required
+def create_team(org_id):
+    """创建团队"""
+    org = Organization.query.get_or_404(org_id)
+
+    # Check permission: only owner or admin members can create teams
+    is_owner = org.owner_id == current_user.id
+    is_admin = db.session.query(organization_members).filter_by(
+        user_id=current_user.id,
+        organization_id=org_id,
+        role='admin'
+    ).first() is not None
+
+    if not is_owner and not is_admin:
+        return jsonify({'error': 'Access denied'}), 403
+
+    data = request.get_json()
+    if not data or 'name' not in data:
+        return jsonify({'error': '团队名称不能为空'}), 400
+
+    # 检查同一组织下是否有同名团队
+    existing_team = Team.query.filter_by(organization_id=org_id, name=data['name']).first()
+    if existing_team:
+        return jsonify({'error': '该组织下已存在同名团队'}), 400
+
+    team = Team(
+        name=data['name'],
+        description=data.get('description', ''),
+        organization_id=org_id
+    )
+
+    try:
+        db.session.add(team)
+        db.session.commit()
+        
+        # 创建者自动成为团队负责人
+        statement = team_members.insert().values(user_id=current_user.id, team_id=team.id, role='leader')
+        db.session.execute(statement)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': '创建团队失败，请重试'}), 400
+
+    return jsonify(team.to_dict()), 201
+
+@app.route('/api/teams/<int:team_id>', methods=['GET'])
+@login_required
+def get_team_details(team_id):
+    """获取团队详情和成员列表"""
+    team = Team.query.get_or_404(team_id)
+    org = team.organization
+
+    # Access check
+    is_owner = org.owner_id == current_user.id
+    is_member = db.session.query(organization_members).filter_by(
+        user_id=current_user.id,
+        organization_id=org.id
+    ).first() is not None
+
+    if not is_owner and not is_member:
+        return jsonify({'error': 'Access denied'}), 403
+
+    # 获取团队成员
+    members_data = db.session.query(
+        User, team_members.c.role
+    ).join(
+        team_members, User.id == team_members.c.user_id
+    ).filter(
+        team_members.c.team_id == team_id
+    ).all()
+
+    members = []
+    for user, role in members_data:
+        member_info = user.to_dict()
+        member_info['role'] = role
+        members.append(member_info)
+
+    return jsonify({
+        'team': team.to_dict(),
+        'organization': org.to_dict(),
+        'members': members
+    })
+
+@app.route('/api/teams/<int:team_id>/join', methods=['POST'])
+@login_required
+def join_team(team_id):
+    """加入团队"""
+    team = Team.query.get_or_404(team_id)
+    org = team.organization
+
+    # 用户必须是组织成员才能加入团队
+    is_org_member = db.session.query(organization_members).filter_by(
+        user_id=current_user.id,
+        organization_id=org.id
+    ).first() is not None
+
+    if not is_org_member:
+        return jsonify({'error': '您需要先加入该组织才能加入团队'}), 403
+
+    # 检查是否已是团队成员
+    is_team_member = db.session.query(team_members).filter_by(
+        user_id=current_user.id,
+        team_id=team_id
+    ).first() is not None
+
+    if is_team_member:
+        return jsonify({'error': '您已经是该团队的成员'}), 400
+
+    try:
+        statement = team_members.insert().values(user_id=current_user.id, team_id=team_id, role='member')
+        db.session.execute(statement)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': '加入团队失败'}), 400
+
+    return jsonify({'success': True, 'message': f'成功加入团队 "{team.name}"'})
+
+@app.route('/api/teams/<int:team_id>/leave', methods=['POST'])
+@login_required
+def leave_team(team_id):
+    """离开团队"""
+    team = Team.query.get_or_404(team_id)
+
+    # 检查是否是团队成员
+    membership = db.session.query(team_members).filter_by(
+        user_id=current_user.id,
+        team_id=team_id
+    ).first()
+
+    if not membership:
+        return jsonify({'error': '您不是该团队的成员'}), 400
+
+    try:
+        db.session.execute(
+            team_members.delete().where(
+                (team_members.c.user_id == current_user.id) &
+                (team_members.c.team_id == team_id)
+            )
+        )
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': '离开团队失败'}), 400
+
+    return jsonify({'success': True, 'message': f'已离开团队 "{team.name}"'})
+
+@app.route('/api/teams/<int:team_id>/members', methods=['POST'])
+@login_required
+def add_team_member(team_id):
+    """添加成员到团队"""
+    team = Team.query.get_or_404(team_id)
+    org = team.organization
+
+    # 检查权限：组织所有者或团队负责人可以添加成员
+    is_owner = org.owner_id == current_user.id
+    is_leader = db.session.query(team_members).filter_by(
+        user_id=current_user.id,
+        team_id=team_id,
+        role='leader'
+    ).first() is not None
+
+    if not is_owner and not is_leader:
+        return jsonify({'error': 'Access denied'}), 403
+
+    data = request.get_json()
+    user_id = data.get('user_id')
+    if not user_id:
+        return jsonify({'error': '请指定用户'}), 400
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': '用户不存在'}), 404
+
+    # 检查用户是否是组织成员
+    is_org_member = db.session.query(organization_members).filter_by(
+        user_id=user_id,
+        organization_id=org.id
+    ).first() is not None
+
+    if not is_org_member:
+        return jsonify({'error': '该用户不是组织成员'}), 400
+
+    # 检查是否已是团队成员
+    is_team_member = db.session.query(team_members).filter_by(
+        user_id=user_id,
+        team_id=team_id
+    ).first() is not None
+
+    if is_team_member:
+        return jsonify({'error': '该用户已是团队成员'}), 400
+
+    try:
+        statement = team_members.insert().values(
+            user_id=user_id,
+            team_id=team_id,
+            role=data.get('role', 'member')
+        )
+        db.session.execute(statement)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': '添加成员失败'}), 400
+
+    return jsonify({'success': True, 'message': f'已添加 {user.username} 到团队'})
 
 # --- Project Routes ---
 

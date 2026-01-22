@@ -11,6 +11,13 @@ organization_members = db.Table('organization_members',
     db.Column('role', db.String(20), default='member')  # 'admin', 'member'
 )
 
+# Association Table for Team Members
+team_members = db.Table('team_members',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('team_id', db.Integer, db.ForeignKey('team.id'), primary_key=True),
+    db.Column('role', db.String(20), default='member')  # 'leader', 'member'
+)
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), index=True, unique=True)
@@ -61,6 +68,29 @@ class Organization(db.Model):
 
     def __repr__(self):
         return f'<Organization {self.name}>'
+
+class Team(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64))
+    description = db.Column(db.Text)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    organization = db.relationship('Organization', backref=db.backref('teams', lazy='dynamic'))
+    members = db.relationship('User', secondary=team_members, backref=db.backref('teams', lazy='dynamic'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'organization_id': self.organization_id,
+            'members_count': len(self.members),
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+    def __repr__(self):
+        return f'<Team {self.name}>'
 
 class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)

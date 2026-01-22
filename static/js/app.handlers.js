@@ -64,6 +64,27 @@
             }
         },
 
+        async handlersJoinOrg(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>加入中...';
+
+            const form = Object.fromEntries(new FormData(e.target));
+            const res = await this.api('/organizations/join', 'POST', form);
+
+            if (res && res.success) {
+                this.modals.close();
+                alert(res.message || '成功加入组织');
+                this.navigate('dashboard');
+            } else {
+                alert(res?.error || '加入组织失败，请重试');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        },
+
         async handlersSubmitProject(e, orgId) {
             e.preventDefault();
             const btn = e.target.querySelector('button[type="submit"]');
@@ -261,6 +282,77 @@
                 this.navigate('requirements', { id: projectId });
             } else {
                 alert(res?.error || '删除需求失败，请重试');
+            }
+        },
+
+        // --- Team Handlers ---
+        async handlersSubmitTeam(e, orgId) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>创建中...';
+
+            const form = Object.fromEntries(new FormData(e.target));
+            const res = await this.api(`/organizations/${orgId}/teams`, 'POST', form);
+
+            if (res && !res.error) {
+                this.modals.close();
+                this.navigate('teams', { id: orgId });
+            } else {
+                alert(res?.error || '创建团队失败，请重试');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        },
+
+        async handlersJoinTeam(teamId) {
+            const res = await this.api(`/teams/${teamId}/join`, 'POST');
+
+            if (res && res.success) {
+                alert(res.message || '成功加入团队');
+                this.navigate('team_details', { id: teamId });
+            } else {
+                alert(res?.error || '加入团队失败');
+            }
+        },
+
+        async handlersLeaveTeam(teamId) {
+            if (!confirm('确定要离开这个团队吗？')) {
+                return;
+            }
+
+            const res = await this.api(`/teams/${teamId}/leave`, 'POST');
+
+            if (res && res.success) {
+                alert(res.message || '已离开团队');
+                if (this.currentOrg) {
+                    this.navigate('teams', { id: this.currentOrg.id });
+                } else {
+                    this.navigate('dashboard');
+                }
+            } else {
+                alert(res?.error || '离开团队失败');
+            }
+        },
+
+        async handlersAddTeamMember(e, teamId) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>添加中...';
+
+            const form = Object.fromEntries(new FormData(e.target));
+            const res = await this.api(`/teams/${teamId}/members`, 'POST', form);
+
+            if (res && res.success) {
+                this.modals.close();
+                this.navigate('team_details', { id: teamId });
+            } else {
+                alert(res?.error || '添加成员失败，请重试');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
             }
         }
     };
