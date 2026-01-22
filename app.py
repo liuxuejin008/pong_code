@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 import os
 
 def create_app():
-    app = Flask(__name__, static_folder='static', static_url_path='')
+    app = Flask(__name__, static_folder='static', static_url_path='/static')
     app.config['SECRET_KEY'] = 'dev-key-change-this' 
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mini_agile.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
