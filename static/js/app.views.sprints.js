@@ -44,7 +44,7 @@
                 const timeSpent = s.time_spent || 0;
 
                 return `
-                    <tr class="group hover:bg-purple-50/30 transition-all cursor-pointer border-b border-gray-100 last:border-0" onclick="app.navigate('board', {id: ${data.project.id}})">
+                    <tr class="group hover:bg-purple-50/30 transition-all cursor-pointer border-b border-gray-100 last:border-0" onclick="app.navigate('board', {id: ${data.project.id}, sprintId: ${s.id}})">
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
                                 ${statusDot}

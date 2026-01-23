@@ -212,7 +212,7 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-2">关联迭代（可选）</label>
                             <select name="sprint_id" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
                                 <option value="">不关联</option>
-                                ${sprints.map(s => `<option value="${s.id}" ${req.sprint_id === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
+                                ${sprints.map(s => `<option value="${s.id}" ${String(req.sprint_id) === String(s.id) ? 'selected' : ''}>${s.name}</option>`).join('')}
                             </select>
                         </div>
                     </div>

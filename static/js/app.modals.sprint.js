@@ -2,9 +2,57 @@
     const MiniAgile = window.MiniAgile = window.MiniAgile || {};
     MiniAgile.modals = MiniAgile.modals || {};
 
+        // 需求搜索过滤函数
+        window.filterReqs = function(keyword, listId) {
+            const list = document.getElementById(listId);
+            if (!list) return;
+            const items = list.querySelectorAll('.req-item');
+            const lowerKeyword = keyword.toLowerCase().trim();
+            
+            items.forEach(item => {
+                const title = item.getAttribute('data-title') || '';
+                if (!lowerKeyword || title.includes(lowerKeyword)) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        };
+
+        // 更新已选需求数量
+        window.updateReqCount = function() {
+            // 创建迭代模态框
+            const createCount = document.getElementById('create-req-count');
+            if (createCount) {
+                const checked = document.querySelectorAll('#create-req-list input[name="requirement_ids"]:checked').length;
+                createCount.textContent = `已选 ${checked} 个`;
+            }
+            // 编辑迭代模态框
+            const editCount = document.getElementById('edit-req-count');
+            if (editCount) {
+                const checked = document.querySelectorAll('#edit-req-list input[name="requirement_ids"]:checked').length;
+                editCount.textContent = `已选 ${checked} 个`;
+            }
+        };
+
         MiniAgile.modals.modalCreateSprint = async function(projectId) {
-            const users = await this.api('/users/search');
-            const userOptions = users ? users.map(u => `<option value="${u.id}" ${this.user && this.user.id === u.id ? 'selected' : ''}>${u.username}</option>`).join('') : '';
+            const [users, reqData] = await Promise.all([
+                this.api('/users/search'),
+                this.api(`/projects/${projectId}/requirements`)
+            ]);
+            const userOptions = users ? users.map(u => `<option value="${u.id}" ${this.user && String(this.user.id) === String(u.id) ? 'selected' : ''}>${u.username}</option>`).join('') : '';
+            
+            // 获取未关联迭代的需求（API直接返回数组）
+            const availableReqs = (Array.isArray(reqData) ? reqData : []).filter(r => !r.sprint_id);
+            const reqCheckboxes = availableReqs.length > 0 ? availableReqs.map(r => `
+                <label class="req-item flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-purple-300 cursor-pointer transition-colors" data-title="${r.title.toLowerCase()}" data-priority="${r.priority}">
+                    <input type="checkbox" name="requirement_ids" value="${r.id}" class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500" onchange="window.updateReqCount && window.updateReqCount()">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-gray-900 truncate">${r.title}</div>
+                        <div class="text-xs text-gray-500">优先级: P${r.priority}</div>
+                    </div>
+                </label>
+            `).join('') : '';
 
             this.modalShow(`
                 <div class="mb-6">
@@ -56,6 +104,25 @@
                     </div>
 
                     <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-semibold text-gray-700">
+                                关联需求（泳道）
+                            </label>
+                            <span id="create-req-count" class="text-xs text-purple-600 font-medium">已选 0 个</span>
+                        </div>
+                        ${availableReqs.length > 0 ? `
+                        <div class="relative mb-2">
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input type="text" id="create-req-search" placeholder="搜索需求..." class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" oninput="window.filterReqs && window.filterReqs(this.value, 'create-req-list')">
+                        </div>
+                        <div id="create-req-list" class="max-h-40 overflow-y-auto space-y-2 p-2 bg-gray-50 rounded-xl border border-gray-200">
+                            ${reqCheckboxes}
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">输入关键字搜索需求，选择要纳入此迭代的需求</p>
+                        ` : '<div class="p-4 bg-gray-50 rounded-xl border border-gray-200 text-gray-400 text-sm text-center italic">暂无可用需求</div>'}
+                    </div>
+
+                    <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">
                             描述
                         </label>
@@ -97,8 +164,25 @@
 
             const sprint = data.sprint;
             const logs = data.work_logs || [];
-            const users = await this.api('/users/search');
-            const userOptions = users ? users.map(u => `<option value="${u.id}" ${sprint.owner_id === u.id ? 'selected' : ''}>${u.username}</option>`).join('') : '';
+            const [users, reqData] = await Promise.all([
+                this.api('/users/search'),
+                this.api(`/projects/${sprint.project_id}/requirements`)
+            ]);
+            const userOptions = users ? users.map(u => `<option value="${u.id}" ${String(sprint.owner_id) === String(u.id) ? 'selected' : ''}>${u.username}</option>`).join('') : '';
+            
+            // 获取可用的需求（未关联迭代的 + 当前迭代已关联的，API直接返回数组）
+            const allReqs = Array.isArray(reqData) ? reqData : [];
+            const availableReqs = allReqs.filter(r => !r.sprint_id || r.sprint_id === sprintId);
+            const checkedCount = availableReqs.filter(r => r.sprint_id === sprintId).length;
+            const editReqCheckboxes = availableReqs.length > 0 ? availableReqs.map(r => `
+                <label class="req-item flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-purple-300 cursor-pointer transition-colors" data-title="${r.title.toLowerCase()}" data-priority="${r.priority}">
+                    <input type="checkbox" name="requirement_ids" value="${r.id}" ${r.sprint_id === sprintId ? 'checked' : ''} class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500" onchange="window.updateReqCount && window.updateReqCount()">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-gray-900 truncate">${r.title}</div>
+                        <div class="text-xs text-gray-500">优先级: P${r.priority}</div>
+                    </div>
+                </label>
+            `).join('') : '';
 
             this.modalShow(`
                 <div class="mb-4">
@@ -108,8 +192,9 @@
 
                 <!-- Tabs -->
                 <div class="flex border-b border-gray-200 mb-6" id="edit-sprint-tabs">
-                    <button onclick="document.getElementById('tab-sprint-details').classList.remove('hidden'); document.getElementById('tab-sprint-time').classList.add('hidden'); this.classList.add('border-purple-500', 'text-purple-600'); this.nextElementSibling.classList.remove('border-purple-500', 'text-purple-600');" class="px-4 py-2 text-sm font-medium text-purple-600 border-b-2 border-purple-500 focus:outline-none transition-colors">详情</button>
-                    <button onclick="document.getElementById('tab-sprint-time').classList.remove('hidden'); document.getElementById('tab-sprint-details').classList.add('hidden'); this.classList.add('border-purple-500', 'text-purple-600'); this.previousElementSibling.classList.remove('border-purple-500', 'text-purple-600');" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent focus:outline-none transition-colors">工时</button>
+                    <button onclick="document.getElementById('tab-sprint-details').classList.remove('hidden'); document.getElementById('tab-sprint-time').classList.add('hidden'); document.getElementById('tab-sprint-reqs').classList.add('hidden'); document.querySelectorAll('#edit-sprint-tabs button').forEach(b => b.classList.remove('border-purple-500', 'text-purple-600')); this.classList.add('border-purple-500', 'text-purple-600');" class="px-4 py-2 text-sm font-medium text-purple-600 border-b-2 border-purple-500 focus:outline-none transition-colors">详情</button>
+                    <button onclick="document.getElementById('tab-sprint-reqs').classList.remove('hidden'); document.getElementById('tab-sprint-details').classList.add('hidden'); document.getElementById('tab-sprint-time').classList.add('hidden'); document.querySelectorAll('#edit-sprint-tabs button').forEach(b => b.classList.remove('border-purple-500', 'text-purple-600')); this.classList.add('border-purple-500', 'text-purple-600');" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent focus:outline-none transition-colors">需求</button>
+                    <button onclick="document.getElementById('tab-sprint-time').classList.remove('hidden'); document.getElementById('tab-sprint-details').classList.add('hidden'); document.getElementById('tab-sprint-reqs').classList.add('hidden'); document.querySelectorAll('#edit-sprint-tabs button').forEach(b => b.classList.remove('border-purple-500', 'text-purple-600')); this.classList.add('border-purple-500', 'text-purple-600');" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent focus:outline-none transition-colors">工时</button>
                 </div>
 
                 <!-- Details Tab -->
@@ -191,6 +276,37 @@
                             <button type="button" onclick="app.modals.close()" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">取消</button>
                             <button type="submit" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/30 transition-all hover:scale-105">
                                 <i class="fa-solid fa-save mr-2"></i>保存更改
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Requirements Tab -->
+                <div id="tab-sprint-reqs" class="hidden">
+                    <form onsubmit="app.handlers.updateSprintRequirements(event, ${sprint.id})" class="space-y-5">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-sm font-semibold text-gray-700">
+                                    关联需求（泳道）
+                                </label>
+                                <span id="edit-req-count" class="text-xs text-purple-600 font-medium">已选 ${checkedCount} 个</span>
+                            </div>
+                            ${availableReqs.length > 0 ? `
+                            <div class="relative mb-2">
+                                <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                                <input type="text" id="edit-req-search" placeholder="搜索需求..." class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" oninput="window.filterReqs && window.filterReqs(this.value, 'edit-req-list')">
+                            </div>
+                            <div id="edit-req-list" class="max-h-64 overflow-y-auto space-y-2 p-2 bg-gray-50 rounded-xl border border-gray-200">
+                                ${editReqCheckboxes}
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">输入关键字搜索需求，选择要纳入此迭代的需求</p>
+                            ` : '<div class="p-4 bg-gray-50 rounded-xl border border-gray-200 text-gray-400 text-sm text-center italic">暂无可用需求</div>'}
+                        </div>
+
+                        <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                            <button type="button" onclick="app.modals.close()" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">取消</button>
+                            <button type="submit" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/30 transition-all hover:scale-105">
+                                <i class="fa-solid fa-save mr-2"></i>保存需求
                             </button>
                         </div>
                     </form>

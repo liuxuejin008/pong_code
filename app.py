@@ -1,7 +1,7 @@
 from flask import Flask, redirect, url_for, request, jsonify, send_from_directory
 from flask_login import login_user, logout_user, current_user, login_required
 from extensions import db, login_manager
-from models import User, Organization, Project, Sprint, Issue, WorkLog, SprintWorkLog, Requirement, Team, organization_members, team_members
+from models import User, Organization, Project, Sprint, Issue, WorkLog, SprintWorkLog, Requirement, Team, Bug, BugWorkLog, organization_members, team_members
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 import os
@@ -554,7 +554,7 @@ def create_sprint(project_id):
     )
     db.session.add(sprint)
     db.session.commit()
-    return jsonify(sprint.to_dict()), 201
+    return jsonify({'sprint': sprint.to_dict()}), 201
 
 @app.route('/api/sprints/<int:sprint_id>', methods=['GET'])
 @login_required
@@ -620,25 +620,124 @@ def add_sprint_worklog(sprint_id):
         'sprint': sprint.to_dict()
     }), 201
 
+@app.route('/api/sprints/<int:sprint_id>/requirements', methods=['PUT'])
+@login_required
+def update_sprint_requirements(sprint_id):
+    """批量更新迭代关联的需求"""
+    sprint = Sprint.query.get_or_404(sprint_id)
+    data = request.get_json()
+    requirement_ids = data.get('requirement_ids', [])
+    
+    # 清除该迭代原有的所有需求关联
+    Requirement.query.filter_by(sprint_id=sprint_id).update({'sprint_id': None})
+    
+    # 设置新的需求关联，并将状态更新为"开发中"
+    if requirement_ids:
+        Requirement.query.filter(Requirement.id.in_(requirement_ids)).update(
+            {'sprint_id': sprint_id, 'status': 'in_progress'}, synchronize_session=False
+        )
+    
+    db.session.commit()
+    
+    # 返回更新后的需求列表
+    requirements = Requirement.query.filter_by(sprint_id=sprint_id).all()
+    return jsonify({
+        'sprint': sprint.to_dict(),
+        'requirements': [r.to_dict() for r in requirements]
+    })
+
+@app.route('/api/sprints/<int:sprint_id>/requirements', methods=['GET'])
+@login_required
+def get_sprint_requirements(sprint_id):
+    """获取迭代关联的需求列表"""
+    sprint = Sprint.query.get_or_404(sprint_id)
+    requirements = Requirement.query.filter_by(sprint_id=sprint_id).order_by(Requirement.priority).all()
+    return jsonify({
+        'requirements': [r.to_dict() for r in requirements]
+    })
+
 @app.route('/api/projects/<int:project_id>/board', methods=['GET'])
 @login_required
 def get_board(project_id):
     project = Project.query.get_or_404(project_id)
-    active_sprint = project.sprints.filter_by(status='active').first()
     
-    if not active_sprint:
+    # 支持通过 sprint_id 参数指定迭代，否则使用活跃迭代
+    sprint_id = request.args.get('sprint_id', type=int)
+    if sprint_id:
+        target_sprint = Sprint.query.filter_by(id=sprint_id, project_id=project_id).first()
+    else:
+        target_sprint = project.sprints.filter_by(status='active').first()
+    
+    if not target_sprint:
         return jsonify({'error': 'No active sprint', 'has_sprint': False})
+    
+    # 获取迭代关联的所有需求
+    requirements = Requirement.query.filter_by(sprint_id=target_sprint.id).order_by(Requirement.priority).all()
+    
+    # 获取迭代的所有任务
+    all_issues = target_sprint.issues.all()
+    
+    # 获取迭代关联的所有缺陷（通过 sprint_id 或 requirement_id 关联）
+    all_bugs = Bug.query.filter(
+        (Bug.sprint_id == target_sprint.id) | 
+        (Bug.requirement_id.in_([r.id for r in requirements]))
+    ).filter_by(project_id=project_id).all()
+    
+    # 辅助函数：将 Issue 转为带类型的字典
+    def issue_to_board_item(issue):
+        d = issue.to_dict()
+        d['item_type'] = 'task'
+        return d
+    
+    # 辅助函数：将 Bug 转为带类型的字典，映射状态到看板状态
+    def bug_to_board_item(bug):
+        d = bug.to_dict()
+        d['item_type'] = 'bug'
+        # 映射缺陷状态到看板状态
+        status_map = {
+            'open': 'todo',
+            'in_progress': 'doing',
+            'resolved': 'done',
+            'closed': 'done',
+            'rejected': 'done'
+        }
+        d['board_status'] = status_map.get(bug.status, 'todo')
+        return d
+    
+    # 构建泳道数据
+    swimlanes = []
+    
+    # 为每个需求创建泳道
+    for req in requirements:
+        req_issues = [issue_to_board_item(i) for i in all_issues if i.requirement_id == req.id]
+        req_bugs = [bug_to_board_item(b) for b in all_bugs if b.requirement_id == req.id]
         
-    todo = active_sprint.issues.filter_by(status='todo').all()
-    doing = active_sprint.issues.filter_by(status='doing').all()
-    done = active_sprint.issues.filter_by(status='done').all()
+        # 合并任务和缺陷
+        all_items = req_issues + req_bugs
+        
+        swimlanes.append({
+            'requirement': req.to_dict(),
+            'todo': [item for item in all_items if (item.get('board_status') or item.get('status')) == 'todo'],
+            'doing': [item for item in all_items if (item.get('board_status') or item.get('status')) == 'doing'],
+            'done': [item for item in all_items if (item.get('board_status') or item.get('status')) == 'done']
+        })
+    
+    # 添加未分类泳道（没有关联需求的任务和缺陷）
+    unassigned_issues = [issue_to_board_item(i) for i in all_issues if i.requirement_id is None]
+    unassigned_bugs = [bug_to_board_item(b) for b in all_bugs if b.requirement_id is None]
+    all_unassigned = unassigned_issues + unassigned_bugs
+    
+    swimlanes.append({
+        'requirement': None,
+        'todo': [item for item in all_unassigned if (item.get('board_status') or item.get('status')) == 'todo'],
+        'doing': [item for item in all_unassigned if (item.get('board_status') or item.get('status')) == 'doing'],
+        'done': [item for item in all_unassigned if (item.get('board_status') or item.get('status')) == 'done']
+    })
     
     return jsonify({
         'has_sprint': True,
-        'sprint': active_sprint.to_dict(),
-        'todo': [i.to_dict() for i in todo],
-        'doing': [i.to_dict() for i in doing],
-        'done': [i.to_dict() for i in done]
+        'sprint': target_sprint.to_dict(),
+        'swimlanes': swimlanes
     })
 
 # --- Issue Routes ---
@@ -672,7 +771,8 @@ def create_issue(project_id):
         status='todo',
         assignee_id=data.get('assignee_id'),
         project_id=project_id,
-        sprint_id=active_sprint.id if active_sprint else None
+        sprint_id=active_sprint.id if active_sprint else None,
+        requirement_id=data.get('requirement_id')
     )
     db.session.add(issue)
     db.session.commit()
@@ -707,6 +807,8 @@ def update_issue(issue_id):
         issue.time_estimate = float(data['time_estimate'])
     if 'status' in data:
         issue.status = data['status']
+    if 'requirement_id' in data:
+        issue.requirement_id = data['requirement_id']
         
     db.session.commit()
     return jsonify(issue.to_dict())
@@ -997,6 +1099,278 @@ def get_requirements_stats(project_id):
             '3': len([r for r in requirements if r.priority == 3]),
             '4': len([r for r in requirements if r.priority == 4]),
             '5': len([r for r in requirements if r.priority == 5])
+        }
+    }
+    
+    return jsonify(stats)
+
+# --- Bug Routes ---
+
+@app.route('/api/projects/<int:project_id>/bugs', methods=['GET'])
+@login_required
+def get_bugs(project_id):
+    """获取项目的所有缺陷，支持搜索和筛选"""
+    project = Project.query.get_or_404(project_id)
+    
+    # Check access
+    org = project.organization
+    is_owner = org.owner_id == current_user.id
+    is_member = db.session.query(organization_members).filter_by(
+        user_id=current_user.id,
+        organization_id=org.id
+    ).first() is not None
+    
+    if not is_owner and not is_member:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    # 获取查询参数
+    search = request.args.get('search', '').strip()
+    status = request.args.get('status', '').strip()
+    severity = request.args.get('severity', '').strip()
+    assignee_id = request.args.get('assignee_id', '').strip()
+    
+    # 构建查询
+    query = Bug.query.filter_by(project_id=project_id)
+    
+    # 搜索过滤
+    if search:
+        query = query.filter(
+            db.or_(
+                Bug.title.ilike(f'%{search}%'),
+                Bug.description.ilike(f'%{search}%')
+            )
+        )
+    
+    # 状态过滤
+    if status:
+        query = query.filter_by(status=status)
+    
+    # 严重程度过滤
+    if severity:
+        query = query.filter_by(severity=int(severity))
+    
+    # 负责人过滤
+    if assignee_id:
+        if assignee_id == 'unassigned':
+            query = query.filter(Bug.assignee_id.is_(None))
+        else:
+            query = query.filter_by(assignee_id=int(assignee_id))
+    
+    # 排序：严重程度高的在前，然后按创建时间倒序
+    bugs = query.order_by(Bug.severity.asc(), Bug.created_at.desc()).all()
+    
+    return jsonify([bug.to_dict() for bug in bugs])
+
+@app.route('/api/projects/<int:project_id>/bugs', methods=['POST'])
+@login_required
+def create_bug(project_id):
+    """创建新缺陷"""
+    project = Project.query.get_or_404(project_id)
+    
+    # Check access
+    org = project.organization
+    is_owner = org.owner_id == current_user.id
+    is_member = db.session.query(organization_members).filter_by(
+        user_id=current_user.id,
+        organization_id=org.id
+    ).first() is not None
+    
+    if not is_owner and not is_member:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    data = request.get_json()
+    
+    # 验证必填字段
+    if not data.get('title') or not data.get('description'):
+        return jsonify({'error': '标题和缺陷描述为必填项'}), 400
+    
+    bug = Bug(
+        title=data['title'],
+        description=data['description'],
+        severity=int(data.get('severity', 3)),
+        status=data.get('status', 'open'),
+        steps_to_reproduce=data.get('steps_to_reproduce'),
+        expected_result=data.get('expected_result'),
+        actual_result=data.get('actual_result'),
+        environment=data.get('environment'),
+        project_id=project_id,
+        reporter_id=current_user.id,
+        assignee_id=data.get('assignee_id') if data.get('assignee_id') else None,
+        sprint_id=data.get('sprint_id') if data.get('sprint_id') else None,
+        requirement_id=data.get('requirement_id') if data.get('requirement_id') else None
+    )
+    
+    db.session.add(bug)
+    db.session.commit()
+    
+    return jsonify(bug.to_dict()), 201
+
+@app.route('/api/bugs/<int:bug_id>', methods=['GET'])
+@login_required
+def get_bug(bug_id):
+    """获取缺陷详情"""
+    bug = Bug.query.get_or_404(bug_id)
+    
+    # Check access
+    project = bug.project
+    org = project.organization
+    is_owner = org.owner_id == current_user.id
+    is_member = db.session.query(organization_members).filter_by(
+        user_id=current_user.id,
+        organization_id=org.id
+    ).first() is not None
+    
+    if not is_owner and not is_member:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    logs = bug.work_logs.order_by(BugWorkLog.date.desc()).all()
+    
+    return jsonify({
+        'bug': bug.to_dict(),
+        'work_logs': [l.to_dict() for l in logs]
+    })
+
+@app.route('/api/bugs/<int:bug_id>', methods=['PUT'])
+@login_required
+def update_bug(bug_id):
+    """更新缺陷"""
+    bug = Bug.query.get_or_404(bug_id)
+    
+    # Check access
+    project = bug.project
+    org = project.organization
+    is_owner = org.owner_id == current_user.id
+    is_member = db.session.query(organization_members).filter_by(
+        user_id=current_user.id,
+        organization_id=org.id
+    ).first() is not None
+    
+    if not is_owner and not is_member:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    data = request.get_json()
+    
+    # 更新字段
+    if 'title' in data:
+        bug.title = data['title']
+    if 'description' in data:
+        bug.description = data['description']
+    if 'severity' in data:
+        bug.severity = int(data['severity'])
+    if 'status' in data:
+        old_status = bug.status
+        bug.status = data['status']
+        # 如果状态变为 resolved 或 closed，记录解决时间
+        if data['status'] in ['resolved', 'closed'] and old_status not in ['resolved', 'closed']:
+            bug.resolved_at = datetime.utcnow()
+        elif data['status'] not in ['resolved', 'closed']:
+            bug.resolved_at = None
+    if 'steps_to_reproduce' in data:
+        bug.steps_to_reproduce = data['steps_to_reproduce']
+    if 'expected_result' in data:
+        bug.expected_result = data['expected_result']
+    if 'actual_result' in data:
+        bug.actual_result = data['actual_result']
+    if 'environment' in data:
+        bug.environment = data['environment']
+    if 'time_estimate' in data:
+        bug.time_estimate = float(data['time_estimate']) if data['time_estimate'] else 0
+    if 'assignee_id' in data:
+        bug.assignee_id = data['assignee_id'] if data['assignee_id'] else None
+    if 'sprint_id' in data:
+        bug.sprint_id = data['sprint_id'] if data['sprint_id'] else None
+    if 'requirement_id' in data:
+        bug.requirement_id = data['requirement_id'] if data['requirement_id'] else None
+    
+    bug.updated_at = datetime.utcnow()
+    db.session.commit()
+    
+    return jsonify(bug.to_dict())
+
+@app.route('/api/bugs/<int:bug_id>', methods=['DELETE'])
+@login_required
+def delete_bug(bug_id):
+    """删除缺陷"""
+    bug = Bug.query.get_or_404(bug_id)
+    
+    # Check access
+    project = bug.project
+    org = project.organization
+    is_owner = org.owner_id == current_user.id
+    is_admin = db.session.query(organization_members).filter_by(
+        user_id=current_user.id,
+        organization_id=org.id,
+        role='admin'
+    ).first() is not None
+    
+    if not is_owner and not is_admin:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    db.session.delete(bug)
+    db.session.commit()
+    
+    return jsonify({'success': True})
+
+@app.route('/api/bugs/<int:bug_id>/worklogs', methods=['POST'])
+@login_required
+def add_bug_worklog(bug_id):
+    """为缺陷添加工时记录"""
+    bug = Bug.query.get_or_404(bug_id)
+    data = request.get_json()
+    
+    try:
+        log_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format'}), 400
+        
+    log = BugWorkLog(
+        bug_id=bug.id,
+        user_id=current_user.id,
+        date=log_date,
+        hours=float(data['hours']),
+        description=data.get('description', '')
+    )
+    
+    db.session.add(log)
+    db.session.commit()
+    
+    return jsonify({
+        'log': log.to_dict(),
+        'bug': bug.to_dict()
+    }), 201
+
+@app.route('/api/projects/<int:project_id>/bugs/stats', methods=['GET'])
+@login_required
+def get_bugs_stats(project_id):
+    """获取缺陷统计数据"""
+    project = Project.query.get_or_404(project_id)
+    
+    # Check access
+    org = project.organization
+    is_owner = org.owner_id == current_user.id
+    is_member = db.session.query(organization_members).filter_by(
+        user_id=current_user.id,
+        organization_id=org.id
+    ).first() is not None
+    
+    if not is_owner and not is_member:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    bugs = Bug.query.filter_by(project_id=project_id).all()
+    
+    stats = {
+        'total': len(bugs),
+        'open': len([b for b in bugs if b.status == 'open']),
+        'in_progress': len([b for b in bugs if b.status == 'in_progress']),
+        'resolved': len([b for b in bugs if b.status == 'resolved']),
+        'closed': len([b for b in bugs if b.status == 'closed']),
+        'rejected': len([b for b in bugs if b.status == 'rejected']),
+        'by_severity': {
+            '1': len([b for b in bugs if b.severity == 1]),
+            '2': len([b for b in bugs if b.severity == 2]),
+            '3': len([b for b in bugs if b.severity == 3]),
+            '4': len([b for b in bugs if b.severity == 4]),
+            '5': len([b for b in bugs if b.severity == 5])
         }
     }
     

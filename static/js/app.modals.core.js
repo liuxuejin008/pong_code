@@ -24,6 +24,7 @@
 
         MiniAgile.modals.modalClose = function() {
             this.showModal = false;
+            this.modalHtml = '';  // 清空内容，确保下次打开时 DOM 重新渲染
         };
 
 })();

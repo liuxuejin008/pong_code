@@ -115,11 +115,15 @@
                         break;
                     case 'board':
                         this.setAuthLayout(false);
-                        this.viewBoard(data.id);
+                        this.viewBoard(data.id, data.sprintId);
                         break;
                     case 'requirements':
                         this.setAuthLayout(false);
                         this.viewRequirements(data.id, data.params);
+                        break;
+                    case 'bugs':
+                        this.setAuthLayout(false);
+                        this.viewBugs(data.id, data.params);
                         break;
                     case 'org_members':
                         this.setAuthLayout(false);
@@ -262,8 +266,8 @@
                                     <i class="fa-solid fa-file-lines w-5 text-center mr-3 text-base ${this.currentView === 'requirements' ? 'text-purple-400' : 'text-gray-500'}"></i>
                                     需求
                                 </a>
-                                <a href="#" class="nav-item group flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-300 hover:bg-sidebar-hover hover:text-white transition-all opacity-70 cursor-not-allowed">
-                                    <i class="fa-solid fa-bug w-5 text-center mr-3 text-base text-gray-500"></i>
+                                <a href="#" onclick="app.navigate('bugs', {id: ${this.currentProject.id}})" class="nav-item group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all ${this.currentView === 'bugs' ? 'active text-purple-300 bg-white/5' : 'text-gray-300 hover:bg-sidebar-hover hover:text-white'}">
+                                    <i class="fa-solid fa-bug w-5 text-center mr-3 text-base ${this.currentView === 'bugs' ? 'text-purple-400' : 'text-gray-500'}"></i>
                                     缺陷
                                 </a>
                                 <a href="#" class="nav-item group flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-300 hover:bg-sidebar-hover hover:text-white transition-all opacity-70 cursor-not-allowed">
@@ -369,6 +373,51 @@
                 if (priority) params.priority = priority;
 
                 this.navigate('requirements', { id: projectId, params: params });
+            },
+
+            // Helper function for bugs filtering
+            bugsFilter(projectId) {
+                const search = document.getElementById('bug-search-input')?.value || '';
+                const status = document.getElementById('bug-status-filter')?.value || '';
+                const severity = document.getElementById('bug-severity-filter')?.value || '';
+
+                const params = {};
+                if (search) params.search = search;
+                if (status) params.status = status;
+                if (severity) params.severity = severity;
+
+                this.navigate('bugs', { id: projectId, params: params });
+            },
+
+            // 切换工作项类型（任务/缺陷）
+            toggleWorkItemType(type) {
+                const titleEl = document.getElementById('create-item-title');
+                const titleLabel = document.getElementById('title-label');
+                const titleInput = document.getElementById('item-title-input');
+                const descInput = document.getElementById('item-desc-input');
+                const taskFields = document.getElementById('task-fields');
+                const bugFields = document.getElementById('bug-fields');
+                const submitBtn = document.getElementById('create-item-btn');
+
+                if (type === 'bug') {
+                    titleEl.textContent = '创建缺陷';
+                    titleLabel.textContent = '缺陷标题';
+                    titleInput.placeholder = '简要描述问题';
+                    descInput.placeholder = '详细描述缺陷情况...';
+                    taskFields.classList.add('hidden');
+                    bugFields.classList.remove('hidden');
+                    submitBtn.innerHTML = '<i class="fa-solid fa-bug mr-2"></i>创建缺陷';
+                    submitBtn.className = 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-red-500/30 transition-all hover:scale-105';
+                } else {
+                    titleEl.textContent = '创建任务';
+                    titleLabel.textContent = '任务标题';
+                    titleInput.placeholder = '需要做什么？';
+                    descInput.placeholder = '添加更多关于此任务的详细信息...';
+                    taskFields.classList.remove('hidden');
+                    bugFields.classList.add('hidden');
+                    submitBtn.innerHTML = '<i class="fa-solid fa-check mr-2"></i>创建任务';
+                    submitBtn.className = 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/30 transition-all hover:scale-105';
+                }
             }
         },
         mounted() {
@@ -380,8 +429,10 @@
                 submitProject: this.handlersSubmitProject.bind(this),
                 submitSprint: this.handlersSubmitSprint.bind(this),
                 updateSprint: this.handlersUpdateSprint.bind(this),
+                updateSprintRequirements: this.handlersUpdateSprintRequirements.bind(this),
                 submitSprintWorkLog: this.handlersSubmitSprintWorkLog.bind(this),
                 submitIssue: this.handlersSubmitIssue.bind(this),
+                submitWorkItem: this.handlersSubmitWorkItem.bind(this),
                 updateIssue: this.handlersUpdateIssue.bind(this),
                 submitWorkLog: this.handlersSubmitWorkLog.bind(this),
                 createRequirement: this.handlersCreateRequirement.bind(this),
@@ -390,7 +441,11 @@
                 submitTeam: this.handlersSubmitTeam.bind(this),
                 joinTeam: this.handlersJoinTeam.bind(this),
                 leaveTeam: this.handlersLeaveTeam.bind(this),
-                addTeamMember: this.handlersAddTeamMember.bind(this)
+                addTeamMember: this.handlersAddTeamMember.bind(this),
+                createBug: this.handlersCreateBug.bind(this),
+                updateBug: this.handlersUpdateBug.bind(this),
+                submitBugWorkLog: this.handlersSubmitBugWorkLog.bind(this),
+                deleteBug: this.handlersDeleteBug.bind(this)
             };
 
             this.modals = {
@@ -408,7 +463,10 @@
                 editRequirement: this.modalEditRequirement.bind(this),
                 createTeam: this.modalCreateTeam.bind(this),
                 addTeamMember: this.modalAddTeamMember.bind(this),
-                selectOrgForTeams: this.modalSelectOrgForTeams.bind(this)
+                selectOrgForTeams: this.modalSelectOrgForTeams.bind(this),
+                createBug: this.modalCreateBug.bind(this),
+                viewBug: this.modalViewBug.bind(this),
+                editBug: this.modalEditBug.bind(this)
             };
 
             window.app = this;

@@ -141,7 +141,22 @@ class Sprint(db.Model):
         sprint_hours = db.session.query(func.coalesce(func.sum(SprintWorkLog.hours), 0)).filter(
             SprintWorkLog.sprint_id == self.id
         ).scalar() or 0
-        time_spent = float(issue_hours) + float(sprint_hours)
+        # 添加缺陷工时统计（包括直接关联和通过需求间接关联的缺陷）
+        # 1. 直接关联到迭代的缺陷工时
+        direct_bug_hours = db.session.query(func.coalesce(func.sum(BugWorkLog.hours), 0)).join(
+            Bug, BugWorkLog.bug_id == Bug.id
+        ).filter(Bug.sprint_id == self.id).scalar() or 0
+        # 2. 通过需求间接关联到迭代的缺陷工时
+        indirect_bug_hours = db.session.query(func.coalesce(func.sum(BugWorkLog.hours), 0)).join(
+            Bug, BugWorkLog.bug_id == Bug.id
+        ).join(
+            Requirement, Bug.requirement_id == Requirement.id
+        ).filter(
+            Requirement.sprint_id == self.id,
+            Bug.sprint_id.is_(None)  # 避免重复计算直接关联的
+        ).scalar() or 0
+        bug_hours = float(direct_bug_hours) + float(indirect_bug_hours)
+        time_spent = float(issue_hours) + float(sprint_hours) + float(bug_hours)
         
         # Map DB status to UI friendly status/Chinese if needed, or keep simple
         # For this demo, let's keep English internal but maybe add display label
@@ -182,8 +197,10 @@ class Issue(db.Model):
     assignee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'))
     sprint_id = db.Column(db.Integer, db.ForeignKey('sprint.id'), nullable=True)
+    requirement_id = db.Column(db.Integer, db.ForeignKey('requirement.id'), nullable=True)
     
     work_logs = db.relationship('WorkLog', backref='issue', lazy='dynamic')
+    requirement = db.relationship('Requirement', backref='issues')
 
     def to_dict(self):
         return {
@@ -197,7 +214,9 @@ class Issue(db.Model):
             'assignee_id': self.assignee_id,
             'assignee_name': self.assignee.username if self.assignee else None,
             'project_id': self.project_id,
-            'sprint_id': self.sprint_id
+            'sprint_id': self.sprint_id,
+            'requirement_id': self.requirement_id,
+            'requirement_title': self.requirement.title if self.requirement else None
         }
 
     def __repr__(self):
@@ -284,3 +303,86 @@ class Requirement(db.Model):
     
     def __repr__(self):
         return f'<Requirement {self.title}>'
+
+
+class BugWorkLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    bug_id = db.Column(db.Integer, db.ForeignKey('bug.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    date = db.Column(db.Date, default=datetime.utcnow)
+    hours = db.Column(db.Float, nullable=False)
+    description = db.Column(db.String(255))
+    
+    user = db.relationship('User', backref='bug_work_logs')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'bug_id': self.bug_id,
+            'user_id': self.user_id,
+            'user_name': self.user.username,
+            'date': self.date.isoformat(),
+            'hours': self.hours,
+            'description': self.description
+        }
+
+
+class Bug(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    severity = db.Column(db.Integer, default=3)  # 1 (致命) to 5 (建议)
+    status = db.Column(db.String(20), default='open')  # open, in_progress, resolved, closed, rejected
+    steps_to_reproduce = db.Column(db.Text, nullable=True)  # 复现步骤
+    time_estimate = db.Column(db.Float, default=0)  # 预估工时
+    expected_result = db.Column(db.Text, nullable=True)  # 期望结果
+    actual_result = db.Column(db.Text, nullable=True)  # 实际结果
+    environment = db.Column(db.String(200), nullable=True)  # 环境信息
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    resolved_at = db.Column(db.DateTime, nullable=True)  # 解决时间
+    
+    # Foreign keys
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    assignee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    sprint_id = db.Column(db.Integer, db.ForeignKey('sprint.id'), nullable=True)
+    requirement_id = db.Column(db.Integer, db.ForeignKey('requirement.id'), nullable=True)
+    
+    # Relationships
+    reporter = db.relationship('User', foreign_keys=[reporter_id], backref='reported_bugs')
+    assignee = db.relationship('User', foreign_keys=[assignee_id], backref='assigned_bugs')
+    project = db.relationship('Project', backref='bugs')
+    sprint = db.relationship('Sprint', backref='bugs')
+    requirement = db.relationship('Requirement', backref='bugs')
+    work_logs = db.relationship('BugWorkLog', backref='bug', lazy='dynamic')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'description': self.description,
+            'severity': self.severity,
+            'status': self.status,
+            'steps_to_reproduce': self.steps_to_reproduce,
+            'expected_result': self.expected_result,
+            'actual_result': self.actual_result,
+            'environment': self.environment,
+            'time_estimate': self.time_estimate,
+            'time_spent': sum(log.hours for log in self.work_logs),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
+            'project_id': self.project_id,
+            'reporter_id': self.reporter_id,
+            'reporter_name': self.reporter.username if self.reporter else None,
+            'assignee_id': self.assignee_id,
+            'assignee_name': self.assignee.username if self.assignee else None,
+            'sprint_id': self.sprint_id,
+            'sprint_name': self.sprint.name if self.sprint else None,
+            'requirement_id': self.requirement_id,
+            'requirement_title': self.requirement.title if self.requirement else None
+        }
+    
+    def __repr__(self):
+        return f'<Bug {self.title}>'

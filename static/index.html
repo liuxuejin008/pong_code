@@ -335,8 +335,8 @@
     </div>
 
     <!-- Modal Overlay -->
-    <div id="modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center transition-opacity" :class="showModal ? 'opacity-100' : 'opacity-0 pointer-events-none'" @click.self="modals.close()">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden transform transition-all border border-gray-200" id="modal-content" :class="showModal ? 'scale-100' : 'scale-95'">
+    <div id="modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center transition-opacity p-4" :class="showModal ? 'opacity-100' : 'opacity-0 pointer-events-none'" @click.self="modals.close()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto transform transition-all border border-gray-200" id="modal-content" :class="showModal ? 'scale-100' : 'scale-95'">
             <!-- Modal Content -->
             <div v-html="modalHtml"></div>
         </div>
@@ -350,6 +350,7 @@
     <script src="/static/js/app.views.sprints.js"></script>
     <script src="/static/js/app.views.board.js"></script>
     <script src="/static/js/app.views.requirements.js"></script>
+    <script src="/static/js/app.views.bugs.js"></script>
     <script src="/static/js/app.views.js"></script>
     <script src="/static/js/app.handlers.js"></script>
     <script src="/static/js/app.modals.core.js"></script>
@@ -358,6 +359,7 @@
     <script src="/static/js/app.modals.sprint.js"></script>
     <script src="/static/js/app.modals.issue.js"></script>
     <script src="/static/js/app.modals.requirement.js"></script>
+    <script src="/static/js/app.modals.bug.js"></script>
     <script src="/static/js/app.modals.js"></script>
     <script src="/static/js/app.js"></script>
 </body>

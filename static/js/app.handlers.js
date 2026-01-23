@@ -112,10 +112,24 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>启动中...';
 
-            const form = Object.fromEntries(new FormData(e.target));
+            const formData = new FormData(e.target);
+            const form = {};
+            // 提取非需求字段
+            for (const [key, value] of formData.entries()) {
+                if (key !== 'requirement_ids') {
+                    form[key] = value;
+                }
+            }
+            // 获取选中的需求 ID 列表
+            const requirementIds = formData.getAll('requirement_ids').map(id => parseInt(id));
+            
             const res = await this.api(`/projects/${projectId}/sprints`, 'POST', form);
 
             if (res && !res.error) {
+                // 如果有选中的需求，关联到新创建的迭代
+                if (requirementIds.length > 0 && res.sprint && res.sprint.id) {
+                    await this.api(`/sprints/${res.sprint.id}/requirements`, 'PUT', { requirement_ids: requirementIds });
+                }
                 this.modals.close();
                 this.navigate('project_sprints', { id: projectId });
             } else {
@@ -140,6 +154,28 @@
                 this.navigate('project_sprints', { id: res.project_id });
             } else {
                 alert(res?.error || '更新迭代失败，请重试');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        },
+
+        async handlersUpdateSprintRequirements(e, sprintId) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>保存中...';
+
+            const formData = new FormData(e.target);
+            const requirementIds = formData.getAll('requirement_ids').map(id => parseInt(id));
+            
+            const res = await this.api(`/sprints/${sprintId}/requirements`, 'PUT', { requirement_ids: requirementIds });
+
+            if (res && !res.error) {
+                this.modals.close();
+                this.navigate('project_sprints', { id: res.sprint.project_id });
+            } else {
+                alert(res?.error || '更新需求关联失败，请重试');
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
@@ -172,6 +208,12 @@
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>创建中...';
 
             const form = Object.fromEntries(new FormData(e.target));
+            // 处理 requirement_id 空值
+            if (form.requirement_id === '' || form.requirement_id === undefined) {
+                form.requirement_id = null;
+            } else {
+                form.requirement_id = parseInt(form.requirement_id);
+            }
             const res = await this.api(`/projects/${projectId}/issues`, 'POST', form);
 
             if (res && !res.error) {
@@ -188,6 +230,68 @@
             }
         },
 
+        // 统一处理创建工作项（任务或缺陷）
+        async handlersSubmitWorkItem(e, projectId) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>创建中...';
+
+            const formData = new FormData(e.target);
+            const itemType = formData.get('item_type');
+            const form = Object.fromEntries(formData);
+            
+            // 处理 requirement_id 空值
+            if (form.requirement_id === '' || form.requirement_id === undefined) {
+                form.requirement_id = null;
+            } else {
+                form.requirement_id = parseInt(form.requirement_id);
+            }
+
+            let res;
+            if (itemType === 'bug') {
+                // 创建缺陷
+                const bugData = {
+                    title: form.title,
+                    description: form.description,
+                    severity: parseInt(form.severity) || 3,
+                    status: 'open',
+                    steps_to_reproduce: form.steps_to_reproduce,
+                    expected_result: form.expected_result,
+                    actual_result: form.actual_result,
+                    environment: form.environment,
+                    requirement_id: form.requirement_id
+                };
+                res = await this.api(`/projects/${projectId}/bugs`, 'POST', bugData);
+            } else {
+                // 创建任务
+                const issueData = {
+                    title: form.title,
+                    description: form.description,
+                    priority: parseInt(form.priority) || 3,
+                    time_estimate: parseFloat(form.time_estimate) || 0,
+                    requirement_id: form.requirement_id
+                };
+                res = await this.api(`/projects/${projectId}/issues`, 'POST', issueData);
+            }
+
+            if (res && !res.error) {
+                this.modals.close();
+                if (this.currentView === 'board') {
+                    this.navigate('board', { id: projectId });
+                } else if (itemType === 'bug') {
+                    this.navigate('bugs', { id: projectId });
+                } else {
+                    this.navigate('project_sprints', { id: projectId });
+                }
+            } else {
+                alert(res?.error || (itemType === 'bug' ? '创建缺陷失败，请重试' : '创建任务失败，请重试'));
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        },
+
         async handlersUpdateIssue(e, issueId) {
             e.preventDefault();
             const btn = e.target.querySelector('button[type="submit"]');
@@ -196,6 +300,12 @@
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>保存中...';
 
             const form = Object.fromEntries(new FormData(e.target));
+            // 处理 requirement_id 空值
+            if (form.requirement_id === '' || form.requirement_id === undefined) {
+                form.requirement_id = null;
+            } else {
+                form.requirement_id = parseInt(form.requirement_id);
+            }
             const res = await this.api(`/issues/${issueId}`, 'PUT', form);
 
             if (res && !res.error) {
@@ -353,6 +463,101 @@
                 alert(res?.error || '添加成员失败，请重试');
                 btn.disabled = false;
                 btn.innerHTML = originalText;
+            }
+        },
+
+        // --- Bug Handlers ---
+        async handlersCreateBug(e, projectId) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>创建中...';
+
+            const form = Object.fromEntries(new FormData(e.target));
+            // 处理空值
+            if (form.assignee_id === '') form.assignee_id = null;
+            if (form.sprint_id === '') form.sprint_id = null;
+            if (form.requirement_id === '') form.requirement_id = null;
+            
+            const res = await this.api(`/projects/${projectId}/bugs`, 'POST', form);
+
+            if (res && !res.error) {
+                this.modals.close();
+                this.navigate('bugs', { id: projectId });
+            } else {
+                alert(res?.error || '创建缺陷失败，请重试');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        },
+
+        async handlersUpdateBug(e, bugId) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>更新中...';
+
+            const form = Object.fromEntries(new FormData(e.target));
+            // 处理空值
+            if (form.assignee_id === '') form.assignee_id = null;
+            if (form.sprint_id === '') form.sprint_id = null;
+            if (form.requirement_id === '') form.requirement_id = null;
+            
+            const res = await this.api(`/bugs/${bugId}`, 'PUT', form);
+
+            if (res && !res.error) {
+                this.modals.close();
+                // 根据当前视图决定导航
+                if (this.currentView === 'board') {
+                    this.navigate('board', { id: res.project_id });
+                } else {
+                    this.navigate('bugs', { id: res.project_id });
+                }
+            } else {
+                alert(res?.error || '更新缺陷失败');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        },
+
+        async handlersSubmitBugWorkLog(e, bugId) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>记录中...';
+
+            const form = Object.fromEntries(new FormData(e.target));
+            const res = await this.api(`/bugs/${bugId}/worklogs`, 'POST', form);
+
+            if (res && !res.error) {
+                // 重新打开编辑模态框以刷新数据
+                this.modals.editBug(bugId);
+            } else {
+                alert(res?.error || '记录工时失败，请重试');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        },
+
+        async handlersDeleteBug(bugId, projectId) {
+            if (!confirm('确定要删除这个缺陷吗？此操作不可撤销。')) {
+                return;
+            }
+
+            const res = await this.api(`/bugs/${bugId}`, 'DELETE');
+
+            if (res && !res.error) {
+                // 根据当前视图决定导航
+                if (this.currentView === 'board') {
+                    this.navigate('board', { id: projectId });
+                } else {
+                    this.navigate('bugs', { id: projectId });
+                }
+            } else {
+                alert(res?.error || '删除缺陷失败，请重试');
             }
         }
     };
