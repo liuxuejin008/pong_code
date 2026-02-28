@@ -9,7 +9,8 @@
                 return;
             }
 
-            const totalProjects = orgs.reduce((sum, org) => sum + org.projects_count, 0);
+            const totalProjects = orgs.reduce((sum, org) => sum + (org.projects_count || 0), 0);
+            const totalDoneTasks = orgs.reduce((sum, org) => sum + (org.done_issues_count || 0), 0);
 
             const orgsHtml = orgs.map(org => `
                 <div class="group block p-6 bg-white rounded-xl border border-gray-200 hover:border-primary-400 hover:shadow-xl hover:shadow-primary-500/10 transition-all duration-200 cursor-pointer relative overflow-hidden" onclick="app.navigate('org_details', {id: ${org.id}})">
@@ -87,7 +88,7 @@
                                     <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
                                         <i class="fa-solid fa-check-circle text-2xl"></i>
                                     </div>
-                                    <span class="text-3xl font-bold">--</span>
+                                    <span class="text-3xl font-bold">${totalDoneTasks}</span>
                                 </div>
                                 <div class="text-sm font-medium text-emerald-100">已完成任务</div>
                             </div>

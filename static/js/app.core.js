@@ -59,12 +59,26 @@
             // --- Navigation & Auth ---
             async init() {
                 this.isLoading = true;
-                const res = await this.api('/auth/status');
-                if (res && res.authenticated) {
-                    this.user = res.user;
-                    this.renderNav();
-                    this.navigate('dashboard');
-                } else {
+                let timeoutId;
+                const timeoutPromise = new Promise((_, reject) => {
+                    timeoutId = setTimeout(() => reject(new Error('auth status timeout')), 10000);
+                });
+                try {
+                    const res = await Promise.race([
+                        this.api('/auth/status'),
+                        timeoutPromise
+                    ]);
+                    clearTimeout(timeoutId);
+                    if (res && res.authenticated) {
+                        this.user = res.user;
+                        this.renderNav();
+                        this.navigate('dashboard');
+                    } else {
+                        this.navigate('login');
+                    }
+                } catch (err) {
+                    clearTimeout(timeoutId);
+                    console.error('Init error:', err);
                     this.navigate('login');
                 }
             },

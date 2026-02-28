@@ -46,10 +46,21 @@ The app will be available at `http://localhost:5000`
 ### Backend Structure (Flask)
 
 **Entry Point**: [app.py](app.py)
-- `create_app()`: Factory function that configures Flask, initializes extensions, and creates database tables
+- `create_app()`: Factory function that configures Flask, initializes extensions, registers blueprints, and creates database tables
 - All routes are REST API endpoints prefixed with `/api/`
 - Authentication handled by Flask-Login with session-based auth
 - Frontend served as static files from `/` route pointing to `static/index.html`
+
+**API 路由（按领域拆分）** [routes/](routes/)：
+- `routes/__init__.py`: `register_blueprints(app)` 注册所有 Blueprint
+- `routes/auth.py`: 认证（/api/auth — status, login, register, logout）
+- `routes/organizations.py`: 组织（/api/organizations — CRUD、加入、成员、组织下团队列表/创建）
+- `routes/teams.py`: 团队（/api/teams — 详情、加入/离开、成员管理）
+- `routes/projects.py`: 项目（创建、详情）
+- `routes/sprints.py`: 迭代与看板（sprint CRUD、工时、需求关联、/board）
+- `routes/issues.py`: 任务（issue CRUD、工时、移动、分配迭代、/users/search）
+- `routes/requirements.py`: 需求（CRUD、统计）
+- `routes/bugs.py`: 缺陷（CRUD、工时、统计）
 
 **Data Models** ([models.py](models.py)):
 - `User`: Authentication and user relationships
@@ -122,11 +133,11 @@ The app will be available at `http://localhost:5000`
 ## Adding New Features
 
 ### Adding a New API Endpoint
-1. Define route in [app.py](app.py) with `@app.route('/api/...', methods=['...'])`
-2. Add `@login_required` if authentication required
-3. Use `request.get_json()` for POST/PUT data
-4. Return `jsonify({...})` with appropriate status code
-5. Update frontend to call via `app.api('/...')`
+1. 在对应领域的 [routes/](routes/) 模块中定义路由（如 `@bp.route('...', methods=['...'])`）
+2. 需要登录时使用 `@login_required`
+3. POST/PUT 数据用 `request.get_json()`
+4. 返回 `jsonify({...})` 及合适的状态码
+5. 前端通过 `app.api('/...')` 调用
 
 ### Adding a New View
 1. Add view function to `app.views` in [static/js/app.js](static/js/app.js)

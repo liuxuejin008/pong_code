@@ -70,3 +70,5 @@ FEATURE_UPDATE.md
 *.bak
 *.swp
 *~.nib
+
+reset_password.py

@@ -58,12 +58,19 @@ class Organization(db.Model):
     projects = db.relationship('Project', backref='organization', lazy='dynamic')
 
     def to_dict(self):
+        done_issues_count = db.session.query(func.count(Issue.id)).join(
+            Project, Issue.project_id == Project.id
+        ).filter(
+            Project.organization_id == self.id,
+            Issue.status == 'done'
+        ).scalar() or 0
         return {
             'id': self.id,
             'name': self.name,
             'owner_id': self.owner_id,
             'owner_name': self.owner.username if self.owner else None,
-            'projects_count': self.projects.count()
+            'projects_count': self.projects.count(),
+            'done_issues_count': done_issues_count
         }
 
     def __repr__(self):
