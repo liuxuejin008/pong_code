@@ -268,11 +268,11 @@
                             </div>
 
                             <nav class="space-y-1 mb-8">
-                                <a href="#" class="nav-item group flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-300 hover:bg-sidebar-hover hover:text-white transition-all opacity-70 cursor-not-allowed">
+                                <a href="#" onclick="app.showComingSoon('概览'); return false;" class="nav-item group flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-300 hover:bg-sidebar-hover hover:text-white transition-all">
                                     <i class="fa-solid fa-chart-pie w-5 text-center mr-3 text-base text-gray-500"></i>
                                     概览
                                 </a>
-                                <a href="#" class="nav-item group flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-300 hover:bg-sidebar-hover hover:text-white transition-all opacity-70 cursor-not-allowed">
+                                <a href="#" onclick="app.showComingSoon('规划'); return false;" class="nav-item group flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-300 hover:bg-sidebar-hover hover:text-white transition-all">
                                     <i class="fa-solid fa-calendar w-5 text-center mr-3 text-base text-gray-500"></i>
                                     规划
                                 </a>
@@ -284,7 +284,7 @@
                                     <i class="fa-solid fa-bug w-5 text-center mr-3 text-base ${this.currentView === 'bugs' ? 'text-purple-400' : 'text-gray-500'}"></i>
                                     缺陷
                                 </a>
-                                <a href="#" class="nav-item group flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-300 hover:bg-sidebar-hover hover:text-white transition-all opacity-70 cursor-not-allowed">
+                                <a href="#" onclick="app.showComingSoon('工作项'); return false;" class="nav-item group flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-300 hover:bg-sidebar-hover hover:text-white transition-all">
                                     <i class="fa-solid fa-list-check w-5 text-center mr-3 text-base text-gray-500"></i>
                                     工作项
                                 </a>
@@ -302,11 +302,11 @@
 
                                 <div class="my-2 border-t border-white/5"></div>
 
-                                <a href="#" class="nav-item group flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-300 hover:bg-sidebar-hover hover:text-white transition-all opacity-70 cursor-not-allowed">
+                                <a href="#" onclick="app.showComingSoon('发布'); return false;" class="nav-item group flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-300 hover:bg-sidebar-hover hover:text-white transition-all">
                                     <i class="fa-solid fa-rocket w-5 text-center mr-3 text-base text-gray-500"></i>
                                     发布
                                 </a>
-                                <a href="#" class="nav-item group flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-300 hover:bg-sidebar-hover hover:text-white transition-all opacity-70 cursor-not-allowed">
+                                <a href="#" onclick="app.showComingSoon('基线'); return false;" class="nav-item group flex items-center px-3 py-2 text-sm font-medium rounded-lg text-gray-300 hover:bg-sidebar-hover hover:text-white transition-all">
                                     <i class="fa-solid fa-flag w-5 text-center mr-3 text-base text-gray-500"></i>
                                     基线
                                 </a>
@@ -401,6 +401,10 @@
                 if (severity) params.severity = severity;
 
                 this.navigate('bugs', { id: projectId, params: params });
+            },
+
+            showComingSoon(featureName) {
+                alert(`${featureName} 功能正在完善中，敬请期待。`);
             },
 
             // 切换工作项类型（任务/缺陷）
