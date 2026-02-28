@@ -6,6 +6,7 @@ Mini-Agile 应用入口。
 import os
 
 from flask import Flask, send_from_directory, jsonify
+from sqlalchemy import text
 
 from extensions import db, login_manager
 
@@ -49,6 +50,15 @@ def create_app():
     def ignore_hybrid_action(path):
         """浏览器扩展等会请求此类路径，直接返回 204 避免 404 刷屏。"""
         return '', 204
+
+    @app.route('/healthz')
+    def healthz():
+        """健康检查：应用可用 + 数据库连通。"""
+        try:
+            db.session.execute(text('SELECT 1'))
+            return jsonify({'status': 'ok'}), 200
+        except Exception:
+            return jsonify({'status': 'degraded'}), 503
 
     with app.app_context():
         db.create_all()
