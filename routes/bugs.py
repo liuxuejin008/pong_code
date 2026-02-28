@@ -7,6 +7,7 @@ from flask_login import current_user, login_required
 
 from extensions import db
 from models import Bug, BugWorkLog, Project, organization_members
+from routes.input_utils import parse_nullable_int, parse_int, parse_float, parse_date
 
 bp = Blueprint('bugs', __name__, url_prefix='/api')
 
@@ -53,12 +54,18 @@ def get_bugs(project_id):
     if status:
         query = query.filter_by(status=status)
     if severity:
-        query = query.filter_by(severity=int(severity))
+        try:
+            query = query.filter_by(severity=parse_int(severity, 'severity'))
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     if assignee_id:
         if assignee_id == 'unassigned':
             query = query.filter(Bug.assignee_id.is_(None))
         else:
-            query = query.filter_by(assignee_id=int(assignee_id))
+            try:
+                query = query.filter_by(assignee_id=parse_int(assignee_id, 'assignee_id'))
+            except ValueError as exc:
+                return jsonify({'error': str(exc)}), 400
     bugs = query.order_by(Bug.severity.asc(), Bug.created_at.desc()).all()
     return jsonify([bug.to_dict() for bug in bugs])
 
@@ -72,10 +79,17 @@ def create_bug(project_id):
     data = request.get_json()
     if not data.get('title') or not data.get('description'):
         return jsonify({'error': '标题和缺陷描述为必填项'}), 400
+    try:
+        severity = parse_int(data.get('severity'), 'severity', default=3)
+        assignee_id = parse_nullable_int(data.get('assignee_id'), 'assignee_id')
+        sprint_id = parse_nullable_int(data.get('sprint_id'), 'sprint_id')
+        requirement_id = parse_nullable_int(data.get('requirement_id'), 'requirement_id')
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
     bug = Bug(
         title=data['title'],
         description=data['description'],
-        severity=int(data.get('severity', 3)),
+        severity=severity,
         status=data.get('status', 'open'),
         steps_to_reproduce=data.get('steps_to_reproduce'),
         expected_result=data.get('expected_result'),
@@ -83,9 +97,9 @@ def create_bug(project_id):
         environment=data.get('environment'),
         project_id=project_id,
         reporter_id=current_user.id,
-        assignee_id=data.get('assignee_id') if data.get('assignee_id') else None,
-        sprint_id=data.get('sprint_id') if data.get('sprint_id') else None,
-        requirement_id=data.get('requirement_id') if data.get('requirement_id') else None
+        assignee_id=assignee_id,
+        sprint_id=sprint_id,
+        requirement_id=requirement_id
     )
     db.session.add(bug)
     db.session.commit()
@@ -98,7 +112,7 @@ def get_bug(bug_id):
     bug = Bug.query.get_or_404(bug_id)
     if not _check_bug_access(bug):
         return jsonify({'error': 'Access denied'}), 403
-    logs = bug.work_logs.order_by(BugWorkLog.date.desc()).all()
+    logs = bug.work_logs.order_by(BugWorkLog.date.desc(), BugWorkLog.created_at.desc()).all()
     return jsonify({
         'bug': bug.to_dict(),
         'work_logs': [l.to_dict() for l in logs]
@@ -117,7 +131,10 @@ def update_bug(bug_id):
     if 'description' in data:
         bug.description = data['description']
     if 'severity' in data:
-        bug.severity = int(data['severity'])
+        try:
+            bug.severity = parse_int(data['severity'], 'severity')
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     if 'status' in data:
         old_status = bug.status
         bug.status = data['status']
@@ -134,13 +151,25 @@ def update_bug(bug_id):
     if 'environment' in data:
         bug.environment = data['environment']
     if 'time_estimate' in data:
-        bug.time_estimate = float(data['time_estimate']) if data['time_estimate'] else 0
+        try:
+            bug.time_estimate = parse_float(data['time_estimate'], 'time_estimate', default=0)
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     if 'assignee_id' in data:
-        bug.assignee_id = data['assignee_id'] if data['assignee_id'] else None
+        try:
+            bug.assignee_id = parse_nullable_int(data['assignee_id'], 'assignee_id')
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     if 'sprint_id' in data:
-        bug.sprint_id = data['sprint_id'] if data['sprint_id'] else None
+        try:
+            bug.sprint_id = parse_nullable_int(data['sprint_id'], 'sprint_id')
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     if 'requirement_id' in data:
-        bug.requirement_id = data['requirement_id'] if data['requirement_id'] else None
+        try:
+            bug.requirement_id = parse_nullable_int(data['requirement_id'], 'requirement_id')
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     bug.updated_at = datetime.utcnow()
     db.session.commit()
     return jsonify(bug.to_dict())
@@ -166,14 +195,15 @@ def add_bug_worklog(bug_id):
         return jsonify({'error': 'Access denied'}), 403
     data = request.get_json()
     try:
-        log_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
-    except ValueError:
-        return jsonify({'error': 'Invalid date format'}), 400
+        log_date = parse_date(data.get('date'), 'date', required=True)
+        hours = parse_float(data.get('hours'), 'hours')
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
     log = BugWorkLog(
         bug_id=bug.id,
         user_id=current_user.id,
         date=log_date,
-        hours=float(data['hours']),
+        hours=hours,
         description=data.get('description', '')
     )
     db.session.add(log)

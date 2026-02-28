@@ -365,7 +365,8 @@
                                 <div class="bg-white border border-gray-100 p-3 rounded-lg text-sm shadow-sm flex justify-between items-start">
                                     <div>
                                         <div class="font-semibold text-gray-800">${log.user_name}</div>
-                                        <div class="text-gray-500 text-xs">${log.date}</div>
+                                        <div class="text-gray-500 text-xs">工时日期：${log.date}</div>
+                                        <div class="text-gray-400 text-xs">登记时间：${log.created_at ? new Date(log.created_at).toLocaleString('zh-CN') : '-'}</div>
                                         ${log.description ? `<div class="text-gray-600 mt-1 italic">"${log.description}"</div>` : ''}
                                     </div>
                                     <div class="font-bold text-red-600 bg-red-50 px-2 py-1 rounded text-xs">

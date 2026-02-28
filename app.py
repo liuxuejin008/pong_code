@@ -16,9 +16,14 @@ STATIC_DIR = os.path.join(ROOT_DIR, 'static')
 
 def create_app():
     app = Flask(__name__, static_folder='static', static_url_path='/static')
-    app.config['SECRET_KEY'] = 'dev-key-change-this'
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mini_agile.db'
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-change-this')
+    # 生产默认使用 MySQL，可通过 DATABASE_URL 覆盖（例如本地临时切回 SQLite）。
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+        'DATABASE_URL',
+        'mysql+pymysql://root:db_admin%23ops.fm@mysql.ops.lizhi.fm:3306/mini_agile?charset=utf8mb4'
+    )
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
 
     db.init_app(app)
     login_manager.init_app(app)

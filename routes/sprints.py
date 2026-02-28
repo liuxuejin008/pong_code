@@ -10,6 +10,7 @@ from models import (
     Project, Sprint, Issue, Requirement, Bug,
     SprintWorkLog, organization_members,
 )
+from routes.input_utils import parse_nullable_int, parse_float, parse_date
 
 bp = Blueprint('sprints', __name__, url_prefix='/api')
 
@@ -27,11 +28,15 @@ def _check_project_access(project):
 @login_required
 def create_sprint(project_id):
     data = request.get_json()
+    project = Project.query.get_or_404(project_id)
+    if not _check_project_access(project):
+        return jsonify({'error': 'Access denied'}), 403
     try:
-        start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
-        end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
-    except ValueError:
-        return jsonify({'error': 'Invalid date format YYYY-MM-DD'}), 400
+        start_date = parse_date(data.get('start_date'), 'start_date', required=True)
+        end_date = parse_date(data.get('end_date'), 'end_date', required=True)
+        owner_id = parse_nullable_int(data.get('owner_id'), 'owner_id') or current_user.id
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
     sprint = Sprint(
         name=data['name'],
         start_date=start_date,
@@ -40,7 +45,7 @@ def create_sprint(project_id):
         description=data.get('description'),
         goal=data.get('goal'),
         category=data.get('category'),
-        owner_id=data.get('owner_id') or current_user.id,
+        owner_id=owner_id,
     )
     db.session.add(sprint)
     db.session.commit()
@@ -51,7 +56,7 @@ def create_sprint(project_id):
 @login_required
 def get_sprint(sprint_id):
     sprint = Sprint.query.get_or_404(sprint_id)
-    logs = sprint.work_logs.order_by(SprintWorkLog.date.desc()).all()
+    logs = sprint.work_logs.order_by(SprintWorkLog.date.desc(), SprintWorkLog.created_at.desc()).all()
     return jsonify({
         'sprint': sprint.to_dict(),
         'work_logs': [l.to_dict() for l in logs]
@@ -62,6 +67,8 @@ def get_sprint(sprint_id):
 @login_required
 def update_sprint(sprint_id):
     sprint = Sprint.query.get_or_404(sprint_id)
+    if not _check_project_access(sprint.project):
+        return jsonify({'error': 'Access denied'}), 403
     data = request.get_json()
     if 'name' in data:
         sprint.name = data['name']
@@ -74,11 +81,20 @@ def update_sprint(sprint_id):
     if 'category' in data:
         sprint.category = data['category']
     if 'owner_id' in data:
-        sprint.owner_id = int(data['owner_id']) if data['owner_id'] else None
+        try:
+            sprint.owner_id = parse_nullable_int(data['owner_id'], 'owner_id')
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     if 'start_date' in data:
-        sprint.start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date() if data['start_date'] else None
+        try:
+            sprint.start_date = parse_date(data['start_date'], 'start_date')
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     if 'end_date' in data:
-        sprint.end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date() if data['end_date'] else None
+        try:
+            sprint.end_date = parse_date(data['end_date'], 'end_date')
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     db.session.commit()
     return jsonify(sprint.to_dict())
 
@@ -87,16 +103,19 @@ def update_sprint(sprint_id):
 @login_required
 def add_sprint_worklog(sprint_id):
     sprint = Sprint.query.get_or_404(sprint_id)
+    if not _check_project_access(sprint.project):
+        return jsonify({'error': 'Access denied'}), 403
     data = request.get_json()
     try:
-        log_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
-    except ValueError:
-        return jsonify({'error': 'Invalid date format'}), 400
+        log_date = parse_date(data.get('date'), 'date', required=True)
+        hours = parse_float(data.get('hours'), 'hours')
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
     log = SprintWorkLog(
         sprint_id=sprint.id,
         user_id=current_user.id,
         date=log_date,
-        hours=float(data['hours']),
+        hours=hours,
         description=data.get('description', '')
     )
     db.session.add(log)
@@ -108,8 +127,18 @@ def add_sprint_worklog(sprint_id):
 @login_required
 def update_sprint_requirements(sprint_id):
     sprint = Sprint.query.get_or_404(sprint_id)
+    if not _check_project_access(sprint.project):
+        return jsonify({'error': 'Access denied'}), 403
     data = request.get_json()
     requirement_ids = data.get('requirement_ids', [])
+    try:
+        requirement_ids = [
+            parse_nullable_int(req_id, 'requirement_id')
+            for req_id in requirement_ids
+            if req_id not in (None, '')
+        ]
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
     Requirement.query.filter_by(sprint_id=sprint_id).update({'sprint_id': None})
     if requirement_ids:
         Requirement.query.filter(Requirement.id.in_(requirement_ids)).update(

@@ -1,12 +1,11 @@
 """任务（Issue）相关 API：CRUD、工时、移动、分配迭代、用户搜索。"""
 
-from datetime import datetime
-
 from flask import Blueprint, request, jsonify
 from flask_login import current_user, login_required
 
 from extensions import db
 from models import User, Issue, Project, Sprint, WorkLog, organization_members
+from routes.input_utils import parse_nullable_int, parse_int, parse_float, parse_date
 
 bp = Blueprint('issues', __name__, url_prefix='/api')
 
@@ -28,16 +27,28 @@ def create_issue(project_id):
         return jsonify({'error': 'Access denied'}), 403
     active_sprint = project.sprints.filter_by(status='active').first()
     data = request.get_json()
+    if not data.get('title'):
+        return jsonify({'error': 'title 为必填项'}), 400
+    try:
+        priority = parse_int(data.get('priority'), 'priority', default=3)
+        time_estimate = parse_float(data.get('time_estimate'), 'time_estimate', default=0)
+        assignee_id = parse_nullable_int(data.get('assignee_id'), 'assignee_id')
+        requirement_id = parse_nullable_int(data.get('requirement_id'), 'requirement_id')
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    # 泳道快速创建任务没有负责人输入，默认归属给创建人，便于后续工时按负责人统计。
+    if assignee_id is None:
+        assignee_id = current_user.id
     issue = Issue(
         title=data['title'],
         description=data.get('description'),
-        priority=int(data.get('priority', 3)),
-        time_estimate=float(data.get('time_estimate', 0)),
+        priority=priority,
+        time_estimate=time_estimate,
         status='todo',
-        assignee_id=data.get('assignee_id'),
+        assignee_id=assignee_id,
         project_id=project_id,
         sprint_id=active_sprint.id if active_sprint else None,
-        requirement_id=data.get('requirement_id')
+        requirement_id=requirement_id
     )
     db.session.add(issue)
     db.session.commit()
@@ -48,7 +59,7 @@ def create_issue(project_id):
 @login_required
 def get_issue(issue_id):
     issue = Issue.query.get_or_404(issue_id)
-    logs = issue.work_logs.order_by(WorkLog.date.desc()).all()
+    logs = issue.work_logs.order_by(WorkLog.date.desc(), WorkLog.created_at.desc()).all()
     return jsonify({
         'issue': issue.to_dict(),
         'work_logs': [l.to_dict() for l in logs]
@@ -65,13 +76,27 @@ def update_issue(issue_id):
     if 'description' in data:
         issue.description = data['description']
     if 'priority' in data:
-        issue.priority = int(data['priority'])
+        try:
+            issue.priority = parse_int(data['priority'], 'priority')
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     if 'time_estimate' in data:
-        issue.time_estimate = float(data['time_estimate'])
+        try:
+            issue.time_estimate = parse_float(data['time_estimate'], 'time_estimate', default=0)
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     if 'status' in data:
         issue.status = data['status']
     if 'requirement_id' in data:
-        issue.requirement_id = data['requirement_id']
+        try:
+            issue.requirement_id = parse_nullable_int(data['requirement_id'], 'requirement_id')
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
+    if 'assignee_id' in data:
+        try:
+            issue.assignee_id = parse_nullable_int(data['assignee_id'], 'assignee_id')
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     db.session.commit()
     return jsonify(issue.to_dict())
 
@@ -82,16 +107,20 @@ def add_worklog(issue_id):
     issue = Issue.query.get_or_404(issue_id)
     data = request.get_json()
     try:
-        log_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
-    except ValueError:
-        return jsonify({'error': 'Invalid date format'}), 400
+        log_date = parse_date(data.get('date'), 'date', required=True)
+        hours = parse_float(data.get('hours'), 'hours')
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
     log = WorkLog(
         issue_id=issue.id,
         user_id=current_user.id,
         date=log_date,
-        hours=float(data['hours']),
+        hours=hours,
         description=data.get('description', '')
     )
+    # 兼容历史无负责人任务：首次录工时时自动绑定负责人为记录人。
+    if issue.assignee_id is None:
+        issue.assignee_id = current_user.id
     db.session.add(log)
     db.session.commit()
     return jsonify({'log': log.to_dict(), 'issue': issue.to_dict()}), 201
@@ -114,7 +143,10 @@ def move_issue(issue_id):
 @login_required
 def assign_sprint(issue_id):
     data = request.get_json()
-    sprint_id = data.get('sprint_id')
+    try:
+        sprint_id = parse_nullable_int(data.get('sprint_id'), 'sprint_id')
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
     issue = Issue.query.get_or_404(issue_id)
     if sprint_id is not None:
         sprint = Sprint.query.get(sprint_id)

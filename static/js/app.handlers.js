@@ -214,6 +214,11 @@
             } else {
                 form.requirement_id = parseInt(form.requirement_id);
             }
+            if (form.assignee_id === '' || form.assignee_id === undefined) {
+                form.assignee_id = null;
+            } else {
+                form.assignee_id = parseInt(form.assignee_id);
+            }
             const res = await this.api(`/projects/${projectId}/issues`, 'POST', form);
 
             if (res && !res.error) {
@@ -248,6 +253,11 @@
             } else {
                 form.requirement_id = parseInt(form.requirement_id);
             }
+            if (form.assignee_id === '' || form.assignee_id === undefined) {
+                form.assignee_id = null;
+            } else {
+                form.assignee_id = parseInt(form.assignee_id);
+            }
 
             let res;
             if (itemType === 'bug') {
@@ -271,7 +281,8 @@
                     description: form.description,
                     priority: parseInt(form.priority) || 3,
                     time_estimate: parseFloat(form.time_estimate) || 0,
-                    requirement_id: form.requirement_id
+                    requirement_id: form.requirement_id,
+                    assignee_id: form.assignee_id
                 };
                 res = await this.api(`/projects/${projectId}/issues`, 'POST', issueData);
             }
@@ -305,6 +316,11 @@
                 form.requirement_id = null;
             } else {
                 form.requirement_id = parseInt(form.requirement_id);
+            }
+            if (form.assignee_id === '' || form.assignee_id === undefined) {
+                form.assignee_id = null;
+            } else {
+                form.assignee_id = parseInt(form.assignee_id);
             }
             const res = await this.api(`/issues/${issueId}`, 'PUT', form);
 

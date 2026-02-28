@@ -9,12 +9,17 @@
             const requirements = swimlanes
                 .filter(s => s.requirement !== null)
                 .map(s => s.requirement);
+            const users = await this.api('/users/search') || [];
             
             const reqOptions = requirements.length > 0 
                 ? `<option value="">未分类</option>` + requirements.map(r => 
                     `<option value="${r.id}" ${String(defaultRequirementId) === String(r.id) ? 'selected' : ''}>${r.title}</option>`
                   ).join('')
                 : '<option value="">无可用需求</option>';
+            const defaultAssigneeId = this.user?.id ? String(this.user.id) : '';
+            const assigneeOptions = users.length > 0
+                ? users.map(u => `<option value="${u.id}" ${String(u.id) === defaultAssigneeId ? 'selected' : ''}>${u.username}</option>`).join('')
+                : '<option value="">暂无可选成员</option>';
 
             this.modalShow(`
                 <div class="mb-6">
@@ -69,7 +74,7 @@
                     
                     <!-- 任务特有字段 -->
                     <div id="task-fields">
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-3 gap-4">
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-2">
                                     优先级 <span class="text-red-500">*</span>
@@ -86,6 +91,14 @@
                                     预估工时（小时）
                                 </label>
                                 <input name="time_estimate" type="number" min="0" step="0.5" value="0" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-3 px-4 text-sm transition-all" placeholder="0">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                    负责人
+                                </label>
+                                <select name="assignee_id" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-3 px-4 text-sm transition-all bg-white">
+                                    ${assigneeOptions}
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -156,9 +169,13 @@
             const requirements = swimlanes
                 .filter(s => s.requirement !== null)
                 .map(s => s.requirement);
+            const users = await this.api('/users/search') || [];
             
             const reqOptions = `<option value="">未分类</option>` + requirements.map(r => 
                 `<option value="${r.id}" ${String(i.requirement_id) === String(r.id) ? 'selected' : ''}>${r.title}</option>`
+            ).join('');
+            const assigneeOptions = `<option value="">未分配</option>` + users.map(u =>
+                `<option value="${u.id}" ${String(i.assignee_id) === String(u.id) ? 'selected' : ''}>${u.username}</option>`
             ).join('');
 
             this.modalShow(`
@@ -190,7 +207,7 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-2">描述</label>
                             <textarea name="description" rows="3" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm resize-none">${i.description || ''}</textarea>
                         </div>
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-3 gap-4">
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-2">优先级</label>
                                 <select name="priority" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
@@ -206,6 +223,12 @@
                                     <option value="todo" ${i.status === 'todo' ? 'selected' : ''}>待办</option>
                                     <option value="doing" ${i.status === 'doing' ? 'selected' : ''}>进行中</option>
                                     <option value="done" ${i.status === 'done' ? 'selected' : ''}>已完成</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">负责人</label>
+                                <select name="assignee_id" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
+                                    ${assigneeOptions}
                                 </select>
                             </div>
                         </div>
@@ -230,7 +253,7 @@
                         <h4 class="text-sm font-bold text-gray-900 mb-3">Log Work</h4>
                         <form onsubmit="app.handlers.submitWorkLog(event, ${i.id})" class="flex flex-col gap-3">
                             <div class="grid grid-cols-2 gap-3">
-                                <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}" class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500">
+                                <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}" class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500" title="工时日期">
                                 <input type="number" name="hours" step="0.25" min="0.25" placeholder="Hours (e.g. 1.5)" required class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500">
                             </div>
                             <input type="text" name="description" placeholder="What did you work on?" class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500">
@@ -248,7 +271,8 @@
                                 <div class="bg-white border border-gray-100 p-3 rounded-lg text-sm shadow-sm flex justify-between items-start">
                                     <div>
                                         <div class="font-semibold text-gray-800">${log.user_name}</div>
-                                        <div class="text-gray-500 text-xs">${log.date}</div>
+                                        <div class="text-gray-500 text-xs">工时日期：${log.date}</div>
+                                        <div class="text-gray-400 text-xs">登记时间：${log.created_at ? new Date(log.created_at).toLocaleString('zh-CN') : '-'}</div>
                                         ${log.description ? `<div class="text-gray-600 mt-1 italic">"${log.description}"</div>` : ''}
                                     </div>
                                     <div class="font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded text-xs">

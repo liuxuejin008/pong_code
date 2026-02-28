@@ -7,6 +7,7 @@ from flask_login import current_user, login_required
 
 from extensions import db
 from models import Requirement, Project, organization_members
+from routes.input_utils import parse_nullable_int, parse_int, parse_date
 
 bp = Blueprint('requirements', __name__, url_prefix='/api')
 
@@ -66,21 +67,22 @@ def create_requirement(project_id):
     data = request.get_json()
     if not data.get('title') or not data.get('content'):
         return jsonify({'error': '标题和需求内容为必填项'}), 400
-    expected_date = None
-    if data.get('expected_delivery_date'):
-        try:
-            expected_date = datetime.strptime(data['expected_delivery_date'], '%Y-%m-%d').date()
-        except ValueError:
-            return jsonify({'error': '日期格式错误，请使用 YYYY-MM-DD'}), 400
+    try:
+        sprint_id = parse_nullable_int(data.get('sprint_id'), 'sprint_id')
+        priority = parse_int(data.get('priority'), 'priority', default=3)
+        expected_date = parse_date(data.get('expected_delivery_date'), 'expected_delivery_date')
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+
     requirement = Requirement(
         title=data['title'],
         content=data['content'],
-        priority=int(data.get('priority', 3)),
+        priority=priority,
         expected_delivery_date=expected_date,
         status=data.get('status', 'pending'),
         project_id=project_id,
         creator_id=current_user.id,
-        sprint_id=data.get('sprint_id')
+        sprint_id=sprint_id
     )
     db.session.add(requirement)
     db.session.commit()
@@ -108,21 +110,24 @@ def update_requirement(req_id):
     if 'content' in data:
         requirement.content = data['content']
     if 'priority' in data:
-        requirement.priority = int(data['priority'])
+        try:
+            requirement.priority = parse_int(data['priority'], 'priority')
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     if 'status' in data:
         requirement.status = data['status']
     if 'sprint_id' in data:
-        requirement.sprint_id = data['sprint_id']
+        try:
+            requirement.sprint_id = parse_nullable_int(data['sprint_id'], 'sprint_id')
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     if 'expected_delivery_date' in data:
-        if data['expected_delivery_date']:
-            try:
-                requirement.expected_delivery_date = datetime.strptime(
-                    data['expected_delivery_date'], '%Y-%m-%d'
-                ).date()
-            except ValueError:
-                return jsonify({'error': '日期格式错误'}), 400
-        else:
-            requirement.expected_delivery_date = None
+        try:
+            requirement.expected_delivery_date = parse_date(
+                data['expected_delivery_date'], 'expected_delivery_date'
+            )
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
     requirement.updated_at = datetime.utcnow()
     db.session.commit()
     return jsonify(requirement.to_dict())

@@ -22,7 +22,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), index=True, unique=True)
     email = db.Column(db.String(120), index=True, unique=True)
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.String(255))
     
     # Relationships
     organizations = db.relationship('Organization', secondary=organization_members,
@@ -234,6 +234,7 @@ class SprintWorkLog(db.Model):
     sprint_id = db.Column(db.Integer, db.ForeignKey('sprint.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     date = db.Column(db.Date, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     hours = db.Column(db.Float, nullable=False)
     description = db.Column(db.String(255))
 
@@ -246,6 +247,7 @@ class SprintWorkLog(db.Model):
             'user_id': self.user_id,
             'user_name': self.user.username,
             'date': self.date.isoformat(),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
             'hours': self.hours,
             'description': self.description
         }
@@ -255,6 +257,7 @@ class WorkLog(db.Model):
     issue_id = db.Column(db.Integer, db.ForeignKey('issue.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     date = db.Column(db.Date, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     hours = db.Column(db.Float, nullable=False)
     description = db.Column(db.String(255))
     
@@ -267,6 +270,7 @@ class WorkLog(db.Model):
             'user_id': self.user_id,
             'user_name': self.user.username,
             'date': self.date.isoformat(),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
             'hours': self.hours,
             'description': self.description
         }
@@ -317,6 +321,7 @@ class BugWorkLog(db.Model):
     bug_id = db.Column(db.Integer, db.ForeignKey('bug.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     date = db.Column(db.Date, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     hours = db.Column(db.Float, nullable=False)
     description = db.Column(db.String(255))
     
@@ -329,6 +334,7 @@ class BugWorkLog(db.Model):
             'user_id': self.user_id,
             'user_name': self.user.username,
             'date': self.date.isoformat(),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
             'hours': self.hours,
             'description': self.description
         }
