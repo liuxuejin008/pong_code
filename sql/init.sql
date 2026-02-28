@@ -1,16 +1,18 @@
--- Mini-Agile MySQL 初始化脚本
--- 用途：首次部署时创建数据库、用户（可选）和所有表结构
--- 执行示例：
---   mysql -u root -p < sql/init_mysql.sql
+-- 单入口初始化脚本（全新库使用）
+-- 执行：
+--   mysql -h mysql.ops.lizhi.fm -u root -p < sql/init.sql
+--
+-- 说明：
+-- - 已包含所有当前修复（如 password_hash=VARCHAR(255)、work_log.created_at 等）
+-- - 无需再执行 migrate_*.sql
 
--- 1) 建库
 CREATE DATABASE IF NOT EXISTS `mini_agile`
   DEFAULT CHARACTER SET utf8mb4
   DEFAULT COLLATE utf8mb4_unicode_ci;
 
 USE `mini_agile`;
 
--- 2) 可选：建应用账号（已有可跳过）
+-- 可选：建应用账号（已有可跳过）
 -- 注意：很多托管 MySQL（或受限 root）不允许 CREATE USER/GRANT。
 -- 为保证脚本可直接执行，默认不做账号授权操作。
 -- 如你有管理员权限，可手动执行：
@@ -18,7 +20,6 @@ USE `mini_agile`;
 -- GRANT ALL PRIVILEGES ON `mini_agile`.* TO 'mini_agile_user'@'%';
 -- FLUSH PRIVILEGES;
 
--- 3) 核心表
 CREATE TABLE IF NOT EXISTS `user` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `username` VARCHAR(64) NULL,
@@ -221,7 +222,6 @@ CREATE TABLE IF NOT EXISTS `bug_work_log` (
     FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 多对多关联表
 CREATE TABLE IF NOT EXISTS `organization_members` (
   `user_id` INT NOT NULL,
   `organization_id` INT NOT NULL,
