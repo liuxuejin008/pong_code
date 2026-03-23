@@ -2,6 +2,75 @@
     const MiniAgile = window.MiniAgile = window.MiniAgile || {};
     MiniAgile.modals = MiniAgile.modals || {};
 
+    function renderEvidenceTimeline(evidences) {
+        if (!evidences || evidences.length === 0) {
+            return `
+                <div class="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-5 py-8 text-center text-sm text-gray-400">
+                    暂无证据记录，可在排查过程中继续补充截图和异常堆栈
+                </div>
+            `;
+        }
+
+        return evidences.map((evidence) => `
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                        <div class="text-sm font-semibold text-gray-900">${evidence.creator_name || '未知用户'}</div>
+                        <div class="text-xs text-gray-500">${evidence.created_at ? new Date(evidence.created_at).toLocaleString('zh-CN') : '-'}</div>
+                    </div>
+                    <span class="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
+                        ${evidence.attachments?.length || 0} 张截图
+                    </span>
+                </div>
+                ${evidence.comment ? `
+                    <div class="mb-3 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 whitespace-pre-wrap">${evidence.comment}</div>
+                ` : ''}
+                ${evidence.stack_trace ? `
+                    <div class="mb-3">
+                        <div class="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">异常堆栈</div>
+                        <pre class="max-h-56 overflow-auto rounded-lg bg-gray-900 px-3 py-3 text-xs leading-5 text-gray-100 whitespace-pre-wrap">${evidence.stack_trace}</pre>
+                    </div>
+                ` : ''}
+                ${evidence.attachments && evidence.attachments.length > 0 ? `
+                    <div class="grid grid-cols-2 gap-3">
+                        ${evidence.attachments.map((attachment) => `
+                            <a href="${attachment.url}" target="_blank" rel="noreferrer" class="group block overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+                                <img src="${attachment.url}" alt="${attachment.file_name}" class="h-36 w-full object-cover transition-transform duration-200 group-hover:scale-105">
+                                <div class="truncate border-t border-gray-200 px-3 py-2 text-xs text-gray-600">${attachment.file_name}</div>
+                            </a>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+    }
+
+    function renderBugWorkLogs(logs, bug) {
+        return `
+            <div class="rounded-xl border border-red-200 bg-red-50 p-4">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                    <h4 class="text-sm font-bold text-gray-900">工时记录</h4>
+                    <span class="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-red-700">
+                        已用 ${bug.time_spent || 0}h / 预估 ${bug.time_estimate || 0}h
+                    </span>
+                </div>
+                <div class="space-y-2">
+                    ${logs && logs.length > 0 ? logs.map((log) => `
+                        <div class="flex items-start justify-between gap-3 rounded-lg border border-red-100 bg-white px-3 py-3 text-sm">
+                            <div>
+                                <div class="font-semibold text-gray-800">${log.user_name}</div>
+                                <div class="text-xs text-gray-500">工时日期：${log.date}</div>
+                                <div class="text-xs text-gray-400">登记时间：${log.created_at ? new Date(log.created_at).toLocaleString('zh-CN') : '-'}</div>
+                                ${log.description ? `<div class="mt-1 text-gray-600 whitespace-pre-wrap">${log.description}</div>` : ''}
+                            </div>
+                            <div class="rounded bg-red-50 px-2 py-1 text-xs font-bold text-red-600">${log.hours}h</div>
+                        </div>
+                    `).join('') : '<div class="py-4 text-center text-sm text-gray-400">暂无工时记录</div>'}
+                </div>
+            </div>
+        `;
+    }
+
     MiniAgile.modals.modalCreateBug = async function(projectId) {
         const projectData = await this.api(`/projects/${projectId}`);
         const sprints = projectData?.sprints || [];
@@ -9,87 +78,113 @@
         const users = await this.api('/users/search');
 
         this.modalShow(`
-            <div class="p-6">
+            <div class="max-h-[75vh] overflow-y-auto pr-1">
                 <div class="mb-6">
                     <h3 class="text-2xl font-bold text-gray-900 mb-2">新建缺陷</h3>
-                    <p class="text-gray-500 text-sm">报告一个产品缺陷</p>
+                    <p class="text-gray-500 text-sm">基础信息必填，首次证据可选补充</p>
                 </div>
                 <form onsubmit="app.handlers.createBug(event, ${projectId})" class="space-y-5">
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">
-                            缺陷标题 <span class="text-red-500">*</span>
-                        </label>
-                        <input name="title" required class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all" placeholder="例如：登录页面无法提交表单">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">
-                            缺陷描述 <span class="text-red-500">*</span>
-                        </label>
-                        <textarea name="description" required rows="4" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="详细描述缺陷的情况..."></textarea>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">严重程度</label>
-                            <select name="severity" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
-                                <option value="1">S0-致命</option>
-                                <option value="2">S1-严重</option>
-                                <option value="3" selected>S2-一般</option>
-                                <option value="4">S3-轻微</option>
-                                <option value="5">S4-建议</option>
-                            </select>
+                    <div class="rounded-2xl border border-gray-200 bg-white p-5 space-y-5">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-sm font-bold text-gray-900">基础信息</h4>
+                            <span class="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">缺陷主单</span>
                         </div>
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">缺陷状态</label>
-                            <select name="status" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
-                                <option value="open" selected>待处理</option>
-                                <option value="in_progress">处理中</option>
-                                <option value="resolved">已解决</option>
-                                <option value="closed">已关闭</option>
-                                <option value="rejected">已拒绝</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">复现步骤</label>
-                        <textarea name="steps_to_reproduce" rows="3" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="1. 打开登录页面\n2. 输入用户名密码\n3. 点击登录按钮"></textarea>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">期望结果</label>
-                            <textarea name="expected_result" rows="2" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="应该成功登录并跳转到首页"></textarea>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">缺陷标题 <span class="text-red-500">*</span></label>
+                            <input name="title" required class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all" placeholder="例如：登录页面无法提交表单">
                         </div>
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">实际结果</label>
-                            <textarea name="actual_result" rows="2" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="页面显示错误提示"></textarea>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">缺陷描述 <span class="text-red-500">*</span></label>
+                            <textarea name="description" required rows="4" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="详细描述缺陷的情况..."></textarea>
                         </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">环境信息</label>
-                        <input name="environment" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm placeholder-gray-400 transition-all" placeholder="例如：Chrome 120, Windows 11">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">负责人（可选）</label>
-                            <select name="assignee_id" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
-                                <option value="">不分配</option>
-                                ${(users || []).map(u => `<option value="${u.id}">${u.username}</option>`).join('')}
-                            </select>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">严重程度</label>
+                                <select name="severity" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
+                                    <option value="1">S0-致命</option>
+                                    <option value="2">S1-严重</option>
+                                    <option value="3" selected>S2-一般</option>
+                                    <option value="4">S3-轻微</option>
+                                    <option value="5">S4-建议</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">缺陷状态</label>
+                                <select name="status" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
+                                    <option value="open" selected>待处理</option>
+                                    <option value="in_progress">处理中</option>
+                                    <option value="resolved">已解决</option>
+                                    <option value="closed">已关闭</option>
+                                    <option value="rejected">已拒绝</option>
+                                </select>
+                            </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">关联迭代（可选）</label>
-                            <select name="sprint_id" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">复现步骤</label>
+                            <textarea name="steps_to_reproduce" rows="3" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="1. 打开登录页面\n2. 输入用户名密码\n3. 点击登录按钮"></textarea>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">期望结果</label>
+                                <textarea name="expected_result" rows="2" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="应该成功登录并跳转到首页"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">实际结果</label>
+                                <textarea name="actual_result" rows="2" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="页面显示错误提示"></textarea>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">环境信息</label>
+                            <input name="environment" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm placeholder-gray-400 transition-all" placeholder="例如：Chrome 120, Windows 11">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">负责人（可选）</label>
+                                <select name="assignee_id" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
+                                    <option value="">不分配</option>
+                                    ${(users || []).map(u => `<option value="${u.id}">${u.username}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">关联迭代（可选）</label>
+                                <select name="sprint_id" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
+                                    <option value="">不关联</option>
+                                    ${sprints.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">关联需求（可选）</label>
+                            <select name="requirement_id" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
                                 <option value="">不关联</option>
-                                ${sprints.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                                ${(requirements || []).map(r => `<option value="${r.id}">${r.title}</option>`).join('')}
                             </select>
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">关联需求（可选）</label>
-                        <select name="requirement_id" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
-                            <option value="">不关联</option>
-                            ${(requirements || []).map(r => `<option value="${r.id}">${r.title}</option>`).join('')}
-                        </select>
+
+                    <div class="rounded-2xl border border-orange-200 bg-orange-50/60 p-5 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-sm font-bold text-gray-900">首次证据（可选）</h4>
+                                <p class="text-xs text-gray-500 mt-1">用于记录异常堆栈、截图和补充说明，不影响工时登记</p>
+                            </div>
+                            <span class="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-orange-700">证据记录</span>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">补充说明</label>
+                            <textarea name="evidence_comment" rows="2" class="block w-full rounded-xl border-2 border-orange-200 bg-white focus:border-orange-400 focus:ring-0 py-3 px-4 text-sm transition-all resize-none" placeholder="例如：仅在预发环境必现"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">异常堆栈</label>
+                            <textarea name="stack_trace" rows="6" class="block w-full rounded-xl border-2 border-orange-200 bg-gray-950 text-gray-100 focus:border-orange-400 focus:ring-0 py-3 px-4 text-sm font-mono transition-all resize-y" placeholder="粘贴异常堆栈、报错日志或关键错误信息"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">截图上传</label>
+                            <input type="file" name="screenshots" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" multiple class="block w-full rounded-xl border-2 border-dashed border-orange-200 bg-white px-4 py-3 text-sm text-gray-600 file:mr-4 file:rounded-lg file:border-0 file:bg-orange-100 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-orange-700 hover:file:bg-orange-200">
+                            <p class="mt-2 text-xs text-gray-500">一期仅支持图片，最多 5 张，建议单张控制在 5MB 内</p>
+                        </div>
                     </div>
+
                     <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
                         <button type="button" onclick="app.modals.close()" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">取消</button>
                         <button type="submit" class="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-red-500/30 transition-all hover:scale-105">
@@ -102,11 +197,14 @@
     };
 
     MiniAgile.modals.modalViewBug = async function(bugId) {
-        const bug = await this.api(`/bugs/${bugId}`);
-        if (bug.error) {
+        const data = await this.api(`/bugs/${bugId}`);
+        if (!data || data.error || !data.bug) {
             alert('加载缺陷详情失败');
             return;
         }
+        const bug = data.bug;
+        const evidences = data.evidences || [];
+        const logs = data.work_logs || [];
 
         const statusLabels = {
             'open': '待处理',
@@ -141,17 +239,26 @@
         };
 
         this.modalShow(`
-            <div class="p-6">
+            <div class="max-h-[75vh] overflow-y-auto pr-1">
                 <div class="mb-6">
                     <div class="flex items-start justify-between mb-3">
                         <h3 class="text-2xl font-bold text-gray-900 flex-1">${bug.title}</h3>
-                        <button onclick="app.modals.editBug(${bug.id})" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-all text-sm font-medium">
-                            <i class="fa-solid fa-edit mr-2"></i>编辑
-                        </button>
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            <button onclick="app.modals.editBug(${bug.id})" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-all text-sm font-medium">
+                                <i class="fa-solid fa-edit mr-2"></i>编辑
+                            </button>
+                            <button onclick="app.modals.addBugEvidence(${bug.id})" class="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-all text-sm font-medium">
+                                <i class="fa-solid fa-camera mr-2"></i>补充证据
+                            </button>
+                            <button onclick="app.modals.editBug(${bug.id}, 'time')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all text-sm font-medium">
+                                <i class="fa-solid fa-clock mr-2"></i>登记工时
+                            </button>
+                        </div>
                     </div>
                     <div class="flex flex-wrap gap-2 mb-3">
                         <span class="px-2.5 py-1 text-xs font-semibold rounded-full ${severityColors[bug.severity]}">${severityLabels[bug.severity]}</span>
                         <span class="px-2.5 py-1 text-xs font-semibold rounded-full ${statusColors[bug.status]}">${statusLabels[bug.status]}</span>
+                        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-700">证据 ${bug.evidence_count || 0}</span>
                         ${bug.sprint_name ? `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-700"><i class="fa-solid fa-rotate mr-1"></i>${bug.sprint_name}</span>` : ''}
                         ${bug.requirement_title ? `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700"><i class="fa-solid fa-file-lines mr-1"></i>${bug.requirement_title}</span>` : ''}
                     </div>
@@ -192,6 +299,27 @@
                     </div>
                     ` : ''}
 
+                    ${bug.latest_stack_trace ? `
+                    <div class="bg-gray-950 rounded-xl p-4 border border-gray-800">
+                        <div class="text-xs font-semibold text-gray-300 mb-2"><i class="fa-solid fa-terminal mr-1"></i>最新异常堆栈</div>
+                        <pre class="text-xs text-gray-100 whitespace-pre-wrap overflow-auto max-h-64">${bug.latest_stack_trace}</pre>
+                    </div>
+                    ` : ''}
+
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-sm font-bold text-gray-900">证据时间线</h4>
+                            <button onclick="app.modals.addBugEvidence(${bug.id})" class="text-sm font-semibold text-orange-700 hover:text-orange-800">
+                                <i class="fa-solid fa-plus mr-1"></i>补充证据
+                            </button>
+                        </div>
+                        <div class="space-y-3">
+                            ${renderEvidenceTimeline(evidences)}
+                        </div>
+                    </div>
+
+                    ${renderBugWorkLogs(logs, bug)}
+
                     <div class="grid grid-cols-2 gap-4">
                         <div class="bg-white rounded-xl p-4 border border-gray-200">
                             <div class="text-xs font-semibold text-gray-500 mb-1">报告者</div>
@@ -225,7 +353,7 @@
         `);
     };
 
-    MiniAgile.modals.modalEditBug = async function(bugId) {
+    MiniAgile.modals.modalEditBug = async function(bugId, initialTab = 'details') {
         const data = await this.api(`/bugs/${bugId}`);
         if (!data || !data.bug) {
             alert('加载缺陷详情失败');
@@ -240,7 +368,7 @@
         const users = await this.api('/users/search');
 
         this.modalShow(`
-            <div class="p-6">
+            <div>
                 <div class="mb-4">
                     <h3 class="text-2xl font-bold text-gray-900 mb-1">编辑缺陷</h3>
                     <p class="text-xs text-gray-500 uppercase tracking-wider font-bold">ID: #${bug.id}</p>
@@ -248,12 +376,12 @@
 
                 <!-- Tabs -->
                 <div class="flex border-b border-gray-200 mb-6" id="bug-edit-tabs">
-                    <button onclick="document.getElementById('bug-tab-details').classList.remove('hidden'); document.getElementById('bug-tab-time').classList.add('hidden'); this.classList.add('border-red-500', 'text-red-600'); this.nextElementSibling.classList.remove('border-red-500', 'text-red-600');" class="px-4 py-2 text-sm font-medium text-red-600 border-b-2 border-red-500 focus:outline-none transition-colors">详情</button>
-                    <button onclick="document.getElementById('bug-tab-time').classList.remove('hidden'); document.getElementById('bug-tab-details').classList.add('hidden'); this.classList.add('border-red-500', 'text-red-600'); this.previousElementSibling.classList.remove('border-red-500', 'text-red-600');" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent focus:outline-none transition-colors">工时</button>
+                    <button onclick="document.getElementById('bug-tab-details').classList.remove('hidden'); document.getElementById('bug-tab-time').classList.add('hidden'); this.classList.add('border-red-500', 'text-red-600'); this.classList.remove('border-transparent', 'text-gray-500'); this.nextElementSibling.classList.remove('border-red-500', 'text-red-600'); this.nextElementSibling.classList.add('border-transparent', 'text-gray-500');" class="px-4 py-2 text-sm font-medium ${initialTab === 'time' ? 'text-gray-500 border-b-2 border-transparent' : 'text-red-600 border-b-2 border-red-500'} focus:outline-none transition-colors">详情</button>
+                    <button onclick="document.getElementById('bug-tab-time').classList.remove('hidden'); document.getElementById('bug-tab-details').classList.add('hidden'); this.classList.add('border-red-500', 'text-red-600'); this.classList.remove('border-transparent', 'text-gray-500'); this.previousElementSibling.classList.remove('border-red-500', 'text-red-600'); this.previousElementSibling.classList.add('border-transparent', 'text-gray-500');" class="px-4 py-2 text-sm font-medium ${initialTab === 'time' ? 'text-red-600 border-b-2 border-red-500' : 'text-gray-500 border-b-2 border-transparent'} hover:text-gray-700 focus:outline-none transition-colors">工时</button>
                 </div>
 
                 <!-- Details Tab -->
-                <div id="bug-tab-details">
+                <div id="bug-tab-details" class="${initialTab === 'time' ? 'hidden' : ''}">
                     <form onsubmit="app.handlers.updateBug(event, ${bug.id})" class="space-y-5">
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">缺陷标题</label>
@@ -342,7 +470,7 @@
                 </div>
 
                 <!-- Time Tracking Tab -->
-                <div id="bug-tab-time" class="hidden">
+                <div id="bug-tab-time" class="${initialTab === 'time' ? '' : 'hidden'}">
                     <div class="bg-red-50 rounded-xl p-4 mb-6 border border-red-200">
                         <h4 class="text-sm font-bold text-gray-900 mb-3">登记工时</h4>
                         <form onsubmit="app.handlers.submitBugWorkLog(event, ${bug.id})" class="flex flex-col gap-3">
@@ -377,6 +505,48 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        `);
+    };
+
+    MiniAgile.modals.modalAddBugEvidence = async function(bugId) {
+        const data = await this.api(`/bugs/${bugId}`);
+        if (!data || !data.bug) {
+            alert('加载缺陷详情失败');
+            return;
+        }
+        const bug = data.bug;
+
+        this.modalShow(`
+            <div class="space-y-5">
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-1">补充证据</h3>
+                    <p class="text-sm text-gray-500">为缺陷 #${bug.id} 添加新的截图、异常堆栈或补充说明</p>
+                </div>
+                <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                    当前缺陷：<span class="font-semibold text-gray-900">${bug.title}</span>
+                </div>
+                <form onsubmit="app.handlers.submitBugEvidence(event, ${bug.id})" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">补充说明</label>
+                        <textarea name="comment" rows="3" class="block w-full rounded-xl border-2 border-orange-200 bg-white focus:border-orange-400 focus:ring-0 py-3 px-4 text-sm resize-none" placeholder="例如：切换为 Firefox 后同样复现"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">异常堆栈</label>
+                        <textarea name="stack_trace" rows="8" class="block w-full rounded-xl border-2 border-orange-200 bg-gray-950 text-gray-100 focus:border-orange-400 focus:ring-0 py-3 px-4 text-sm font-mono resize-y" placeholder="粘贴新的异常堆栈或报错日志"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">截图上传</label>
+                        <input type="file" name="screenshots" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" multiple class="block w-full rounded-xl border-2 border-dashed border-orange-200 bg-white px-4 py-3 text-sm text-gray-600 file:mr-4 file:rounded-lg file:border-0 file:bg-orange-100 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-orange-700 hover:file:bg-orange-200">
+                        <p class="mt-2 text-xs text-gray-500">可只补充说明，也可只贴堆栈或截图；留空则不会提交成功</p>
+                    </div>
+                    <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                        <button type="button" onclick="app.modals.viewBug(${bug.id})" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">返回详情</button>
+                        <button type="submit" class="bg-orange-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-orange-700 transition-colors">
+                            <i class="fa-solid fa-camera mr-2"></i>提交证据
+                        </button>
+                    </div>
+                </form>
             </div>
         `);
     };

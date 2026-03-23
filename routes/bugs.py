@@ -1,15 +1,29 @@
-"""缺陷（Bug）相关 API：CRUD、工时、统计。"""
+"""缺陷（Bug）相关 API：CRUD、工时、证据、统计。"""
 
+import os
 from datetime import datetime
+from uuid import uuid4
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_login import current_user, login_required
+from werkzeug.utils import secure_filename
 
 from extensions import db
-from models import Bug, BugWorkLog, Project, organization_members
+from models import (
+    Bug,
+    BugEvidence,
+    BugEvidenceAttachment,
+    BugWorkLog,
+    Project,
+    organization_members,
+)
 from routes.input_utils import parse_nullable_int, parse_int, parse_float, parse_date
 
 bp = Blueprint('bugs', __name__, url_prefix='/api')
+
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+MAX_EVIDENCE_IMAGE_COUNT = 5
+MAX_EVIDENCE_IMAGE_SIZE = 5 * 1024 * 1024
 
 
 def _check_project_access(project):
@@ -31,6 +45,104 @@ def _check_org_admin(org):
         user_id=current_user.id, organization_id=org.id, role='admin'
     ).first() is not None
     return is_owner or is_admin
+
+
+def _get_upload_root():
+    return current_app.config['BUG_EVIDENCE_UPLOAD_DIR']
+
+
+def _remove_attachment_file(file_path):
+    if not file_path:
+        return
+    absolute_path = os.path.join(current_app.static_folder, file_path)
+    if os.path.exists(absolute_path):
+        os.remove(absolute_path)
+
+
+def _save_evidence_attachments(bug, evidence, files):
+    upload_root = _get_upload_root()
+    bug_folder = os.path.join(upload_root, f'bug-{bug.id}')
+    os.makedirs(bug_folder, exist_ok=True)
+
+    attachments = []
+    saved_paths = []
+    try:
+        for file_storage in files:
+            if not file_storage or not file_storage.filename:
+                continue
+
+            safe_name = secure_filename(file_storage.filename)
+            extension = safe_name.rsplit('.', 1)[-1].lower() if '.' in safe_name else ''
+            if extension not in ALLOWED_IMAGE_EXTENSIONS:
+                raise ValueError('证据附件只支持图片格式（png/jpg/jpeg/webp）')
+
+            file_storage.stream.seek(0, os.SEEK_END)
+            file_size = file_storage.stream.tell()
+            file_storage.stream.seek(0)
+            if file_size > MAX_EVIDENCE_IMAGE_SIZE:
+                raise ValueError('单张截图不能超过 5MB')
+
+            generated_name = f'{uuid4().hex}.{extension}'
+            absolute_path = os.path.join(bug_folder, generated_name)
+            file_storage.save(absolute_path)
+            saved_paths.append(absolute_path)
+
+            relative_path = os.path.relpath(absolute_path, current_app.static_folder)
+            attachment = BugEvidenceAttachment(
+                evidence_id=evidence.id,
+                file_name=safe_name,
+                file_path=relative_path,
+                mime_type=file_storage.mimetype or f'image/{extension}',
+                file_size=file_size
+            )
+            db.session.add(attachment)
+            attachments.append(attachment)
+    except Exception:
+        for saved_path in saved_paths:
+            if os.path.exists(saved_path):
+                os.remove(saved_path)
+        raise
+
+    return attachments, saved_paths
+
+
+def _create_bug_evidence(bug, comment=None, stack_trace=None, files=None):
+    normalized_comment = (comment or '').strip()
+    normalized_stack_trace = (stack_trace or '').strip()
+    normalized_files = [file for file in (files or []) if getattr(file, 'filename', '')]
+
+    if not normalized_comment and not normalized_stack_trace and not normalized_files:
+        raise ValueError('证据内容不能为空')
+    if len(normalized_files) > MAX_EVIDENCE_IMAGE_COUNT:
+        raise ValueError(f'最多上传 {MAX_EVIDENCE_IMAGE_COUNT} 张截图')
+
+    evidence = BugEvidence(
+        bug_id=bug.id,
+        creator_id=current_user.id,
+        comment=normalized_comment or None,
+        stack_trace=normalized_stack_trace or None
+    )
+    db.session.add(evidence)
+    db.session.flush()
+
+    try:
+        _, saved_paths = _save_evidence_attachments(bug, evidence, normalized_files)
+    except Exception:
+        db.session.delete(evidence)
+        raise
+
+    if normalized_stack_trace:
+        bug.latest_stack_trace = normalized_stack_trace
+    bug.evidence_count = (bug.evidence_count or 0) + 1
+    bug.updated_at = datetime.utcnow()
+    try:
+        db.session.commit()
+    except Exception:
+        for saved_path in saved_paths:
+            if os.path.exists(saved_path):
+                os.remove(saved_path)
+        raise
+    return evidence
 
 
 @bp.route('/projects/<int:project_id>/bugs', methods=['GET'])
@@ -113,9 +225,11 @@ def get_bug(bug_id):
     if not _check_bug_access(bug):
         return jsonify({'error': 'Access denied'}), 403
     logs = bug.work_logs.order_by(BugWorkLog.date.desc(), BugWorkLog.created_at.desc()).all()
+    evidences = bug.evidences.order_by(BugEvidence.created_at.desc(), BugEvidence.id.desc()).all()
     return jsonify({
         'bug': bug.to_dict(),
-        'work_logs': [l.to_dict() for l in logs]
+        'work_logs': [l.to_dict() for l in logs],
+        'evidences': [e.to_dict() for e in evidences]
     })
 
 
@@ -182,9 +296,43 @@ def delete_bug(bug_id):
     org = bug.project.organization
     if not _check_org_admin(org):
         return jsonify({'error': 'Access denied'}), 403
+    attachments = [
+        attachment.file_path
+        for evidence in bug.evidences.all()
+        for attachment in evidence.attachments.all()
+    ]
     db.session.delete(bug)
     db.session.commit()
+    for file_path in attachments:
+        _remove_attachment_file(file_path)
     return jsonify({'success': True})
+
+
+@bp.route('/bugs/<int:bug_id>/evidences', methods=['POST'])
+@login_required
+def add_bug_evidence(bug_id):
+    bug = Bug.query.get_or_404(bug_id)
+    if not _check_bug_access(bug):
+        return jsonify({'error': 'Access denied'}), 403
+
+    files = request.files.getlist('screenshots')
+    comment = request.form.get('comment')
+    stack_trace = request.form.get('stack_trace')
+    try:
+        evidence = _create_bug_evidence(
+            bug,
+            comment=comment,
+            stack_trace=stack_trace,
+            files=files,
+        )
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({'error': str(exc)}), 400
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({'error': f'保存证据失败: {str(exc)}'}), 500
+
+    return jsonify({'evidence': evidence.to_dict(), 'bug': bug.to_dict()}), 201
 
 
 @bp.route('/bugs/<int:bug_id>/worklogs', methods=['POST'])

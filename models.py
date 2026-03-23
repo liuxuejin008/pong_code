@@ -340,6 +340,56 @@ class BugWorkLog(db.Model):
         }
 
 
+class BugEvidenceAttachment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    evidence_id = db.Column(db.Integer, db.ForeignKey('bug_evidence.id'), nullable=False)
+    file_name = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(255), nullable=False)
+    mime_type = db.Column(db.String(120), nullable=False)
+    file_size = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'file_name': self.file_name,
+            'file_path': self.file_path,
+            'mime_type': self.mime_type,
+            'file_size': self.file_size,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'url': f'/static/{self.file_path.lstrip("/")}'
+        }
+
+
+class BugEvidence(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    bug_id = db.Column(db.Integer, db.ForeignKey('bug.id'), nullable=False)
+    creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    comment = db.Column(db.Text, nullable=True)
+    stack_trace = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    creator = db.relationship('User', backref='bug_evidences')
+    attachments = db.relationship(
+        'BugEvidenceAttachment',
+        backref='evidence',
+        lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'bug_id': self.bug_id,
+            'creator_id': self.creator_id,
+            'creator_name': self.creator.username if self.creator else None,
+            'comment': self.comment,
+            'stack_trace': self.stack_trace,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'attachments': [attachment.to_dict() for attachment in self.attachments.order_by(BugEvidenceAttachment.id.asc()).all()]
+        }
+
+
 class Bug(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
@@ -351,6 +401,8 @@ class Bug(db.Model):
     expected_result = db.Column(db.Text, nullable=True)  # 期望结果
     actual_result = db.Column(db.Text, nullable=True)  # 实际结果
     environment = db.Column(db.String(200), nullable=True)  # 环境信息
+    latest_stack_trace = db.Column(db.Text, nullable=True)  # 最近一条关键堆栈
+    evidence_count = db.Column(db.Integer, default=0)  # 证据数
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     resolved_at = db.Column(db.DateTime, nullable=True)  # 解决时间
@@ -369,6 +421,7 @@ class Bug(db.Model):
     sprint = db.relationship('Sprint', backref='bugs')
     requirement = db.relationship('Requirement', backref='bugs')
     work_logs = db.relationship('BugWorkLog', backref='bug', lazy='dynamic')
+    evidences = db.relationship('BugEvidence', backref='bug', lazy='dynamic', cascade='all, delete-orphan')
     
     def to_dict(self):
         return {
@@ -381,6 +434,8 @@ class Bug(db.Model):
             'expected_result': self.expected_result,
             'actual_result': self.actual_result,
             'environment': self.environment,
+            'latest_stack_trace': self.latest_stack_trace,
+            'evidence_count': self.evidence_count or 0,
             'time_estimate': self.time_estimate,
             'time_spent': sum(log.hours for log in self.work_logs),
             'created_at': self.created_at.isoformat() if self.created_at else None,

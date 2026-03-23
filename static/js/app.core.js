@@ -31,12 +31,16 @@
             // --- API Helper ---
             async api(endpoint, method = 'GET', data = null) {
                 const options = {
-                    method,
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    method
                 };
-                if (data) options.body = JSON.stringify(data);
+                if (data instanceof FormData) {
+                    options.body = data;
+                } else if (data) {
+                    options.headers = {
+                        'Content-Type': 'application/json'
+                    };
+                    options.body = JSON.stringify(data);
+                }
 
                 try {
                     const response = await fetch(`/api${endpoint}`, options);
@@ -463,6 +467,7 @@
                 createBug: this.handlersCreateBug.bind(this),
                 updateBug: this.handlersUpdateBug.bind(this),
                 submitBugWorkLog: this.handlersSubmitBugWorkLog.bind(this),
+                submitBugEvidence: this.handlersSubmitBugEvidence.bind(this),
                 deleteBug: this.handlersDeleteBug.bind(this)
             };
 
@@ -484,7 +489,8 @@
                 selectOrgForTeams: this.modalSelectOrgForTeams.bind(this),
                 createBug: this.modalCreateBug.bind(this),
                 viewBug: this.modalViewBug.bind(this),
-                editBug: this.modalEditBug.bind(this)
+                editBug: this.modalEditBug.bind(this),
+                addBugEvidence: this.modalAddBugEvidence.bind(this)
             };
 
             window.app = this;
