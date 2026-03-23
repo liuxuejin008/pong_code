@@ -1,3 +1,4 @@
+import base64
 import importlib
 import io
 import os
@@ -10,6 +11,10 @@ from unittest import mock
 
 
 class BugEvidenceApiTestCase(unittest.TestCase):
+    SAMPLE_PNG_BYTES = base64.b64decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aF9sAAAAASUVORK5CYII='
+    )
+
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp(prefix='mini-agile-test-')
         self.db_path = os.path.join(self.temp_dir, 'test.db')
@@ -84,13 +89,37 @@ class BugEvidenceApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         return response.get_json()['id']
 
+    def _png_upload(self, filename='evidence.png'):
+        return io.BytesIO(self.SAMPLE_PNG_BYTES), filename
+
+    def test_bug_evidence_accepts_real_png_upload_and_exposes_preview_url(self):
+        evidence_response = self.client.post(
+            f'/api/bugs/{self.bug_id}/evidences',
+            data={
+                'comment': '真实 PNG 上传',
+                'screenshots': self._png_upload('preview.png'),
+            },
+            content_type='multipart/form-data',
+        )
+        self.assertEqual(evidence_response.status_code, 201)
+
+        payload = evidence_response.get_json()
+        attachments = payload['evidence']['attachments']
+        self.assertEqual(len(attachments), 1)
+        self.assertEqual(attachments[0]['file_name'], 'preview.png')
+        self.assertTrue(attachments[0]['url'].endswith('.png'))
+        self.assertTrue(attachments[0]['url'].startswith('/static/uploads/'))
+        self.assertTrue(
+            os.path.exists(os.path.join(self.app.static_folder, attachments[0]['file_path']))
+        )
+
     def test_bug_detail_includes_evidence_timeline_and_latest_stack_trace(self):
         evidence_response = self.client.post(
             f'/api/bugs/{self.bug_id}/evidences',
             data={
                 'comment': '首次提缺陷时补充证据',
                 'stack_trace': 'Traceback: order service failed',
-                'screenshots': (io.BytesIO(b'fake-image-data'), 'error.png'),
+                'screenshots': self._png_upload('error.png'),
             },
             content_type='multipart/form-data',
         )
@@ -148,7 +177,7 @@ class BugEvidenceApiTestCase(unittest.TestCase):
             data={
                 'comment': '混合上传应整体失败',
                 'screenshots': [
-                    (io.BytesIO(b'fake-image-data'), 'valid.png'),
+                    self._png_upload('valid.png'),
                     (io.BytesIO(b'plain-text'), 'invalid.txt'),
                 ],
             },
@@ -172,7 +201,7 @@ class BugEvidenceApiTestCase(unittest.TestCase):
                 f'/api/bugs/{self.bug_id}/evidences',
                 data={
                     'comment': '提交阶段失败也不应遗留文件',
-                    'screenshots': (io.BytesIO(b'fake-image-data'), 'valid.png'),
+                    'screenshots': self._png_upload('valid.png'),
                 },
                 content_type='multipart/form-data',
             )
