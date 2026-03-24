@@ -42,11 +42,11 @@
                             <p class="text-gray-500 mt-2 text-base">这是您的工作空间概览</p>
                         </div>
                         <div class="flex gap-3 mt-4 md:mt-0">
-                            <button onclick="app.modals.joinOrg()" class="bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50 font-semibold py-3 px-6 rounded-xl shadow-sm transition-all flex items-center gap-2 hover:scale-105">
+                            <button type="button" data-testid="join-org-button" onclick="app.modals.joinOrg()" class="bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50 font-semibold py-3 px-6 rounded-xl shadow-sm transition-all flex items-center gap-2 hover:scale-105">
                                 <i class="fa-solid fa-right-to-bracket"></i>
                                 <span>加入组织</span>
                             </button>
-                            <button onclick="app.modals.createOrg()" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-purple-500/30 transition-all flex items-center gap-2 hover:scale-105">
+                            <button type="button" data-testid="create-org-button" onclick="app.modals.createOrg()" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-purple-500/30 transition-all flex items-center gap-2 hover:scale-105">
                                 <i class="fa-solid fa-plus"></i>
                                 <span>创建组织</span>
                             </button>
@@ -116,11 +116,11 @@
                                     <h3 class="text-xl font-semibold text-gray-900 mb-2">暂无组织</h3>
                                     <p class="text-gray-500 mb-6 max-w-sm mx-auto">创建您的第一个组织或加入已有组织，开始管理项目和团队</p>
                                     <div class="flex items-center justify-center gap-4">
-                                        <button onclick="app.modals.joinOrg()" class="inline-flex items-center text-purple-600 font-semibold hover:text-purple-700 hover:underline">
+                                        <button type="button" data-testid="join-org-empty-button" onclick="app.modals.joinOrg()" class="inline-flex items-center text-purple-600 font-semibold hover:text-purple-700 hover:underline">
                                             <i class="fa-solid fa-right-to-bracket mr-2"></i>加入组织
                                         </button>
                                         <span class="text-gray-400">或</span>
-                                        <button onclick="app.modals.createOrg()" class="inline-flex items-center text-purple-600 font-semibold hover:text-purple-700 hover:underline">
+                                        <button type="button" data-testid="create-org-empty-button" onclick="app.modals.createOrg()" class="inline-flex items-center text-purple-600 font-semibold hover:text-purple-700 hover:underline">
                                             <i class="fa-solid fa-plus mr-2"></i>创建组织
                                         </button>
                                     </div>
@@ -136,15 +136,17 @@
 
         MiniAgile.views.viewOrgDetails = async function(id) {
             const data = await this.api(`/organizations/${id}`);
-            if (!data) {
+            if (!data || data.error) {
                 this.isLoading = false;
+                alert(data?.error || '加载组织失败');
+                this.navigate('dashboard');
                 return;
             }
             this.currentOrg = data.organization;
             this.renderTopContext();
 
             const projectsHtml = data.projects.map(p => `
-                <div class="group bg-white rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-200 cursor-pointer p-6 flex flex-col h-full relative overflow-hidden" onclick="app.navigate('project_sprints', {id: ${p.id}})">
+                <div class="group bg-white rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-200 cursor-pointer p-6 flex flex-col h-full relative overflow-hidden" data-testid="org-project-card" data-project-id="${p.id}" onclick="app.navigate('project_sprints', {id: ${p.id}})">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-full -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
                     <div class="relative z-10">
@@ -190,7 +192,7 @@
                                 <p class="text-gray-500 mt-1">组织工作空间和项目</p>
                             </div>
                         </div>
-                        <button onclick="app.modals.createProject(${id})" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-purple-500/30 transition-all hover:scale-105 flex items-center gap-2">
+                        <button type="button" data-testid="create-project-button" onclick="app.modals.createProject(${id})" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-purple-500/30 transition-all hover:scale-105 flex items-center gap-2">
                             <i class="fa-solid fa-plus"></i>
                             <span>新建项目</span>
                         </button>
@@ -256,7 +258,7 @@
                                     </div>
                                     <h3 class="text-xl font-semibold text-gray-900 mb-2">暂无项目</h3>
                                     <p class="text-gray-500 mb-6 max-w-sm mx-auto">创建您的第一个项目，开始组织和追踪工作</p>
-                                    <button onclick="app.modals.createProject(${id})" class="inline-flex items-center text-purple-600 font-semibold hover:text-purple-700 hover:underline">
+                                    <button type="button" data-testid="create-project-empty-button" onclick="app.modals.createProject(${id})" class="inline-flex items-center text-purple-600 font-semibold hover:text-purple-700 hover:underline">
                                         <i class="fa-solid fa-plus mr-2"></i>创建项目
                                     </button>
                                 </div>

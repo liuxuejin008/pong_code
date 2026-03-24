@@ -68,7 +68,7 @@
                         </h1>
                         <p class="mt-2 text-sm text-gray-600">跟踪和管理产品缺陷</p>
                     </div>
-                    <button onclick="app.modals.createBug(${projectId})" class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm font-semibold rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg shadow-red-500/30 transform hover:scale-105">
+                    <button type="button" data-testid="create-bug-button" onclick="app.modals.createBug(${projectId})" class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm font-semibold rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg shadow-red-500/30 transform hover:scale-105">
                         <i class="fa-solid fa-plus"></i>
                         <span>新建缺陷</span>
                     </button>
@@ -186,7 +186,7 @@
                             </div>
                             <h3 class="text-lg font-semibold text-gray-900 mb-2">暂无缺陷</h3>
                             <p class="text-gray-600 mb-4">当前没有任何缺陷记录</p>
-                            <button onclick="app.modals.createBug(${projectId})" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-medium">
+                            <button type="button" data-testid="create-bug-empty-button" onclick="app.modals.createBug(${projectId})" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-medium">
                                 <i class="fa-solid fa-plus mr-2"></i>新建缺陷
                             </button>
                         </div>

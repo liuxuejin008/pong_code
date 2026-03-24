@@ -54,6 +54,8 @@ logs/
 *.log.*
 
 # Testing
+.pw-browsers/
+tests/e2e/artifacts/
 .pytest_cache/
 .coverage
 htmlcov/

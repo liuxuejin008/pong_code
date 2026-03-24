@@ -65,7 +65,7 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
                                 迭代名称 <span class="text-red-500">*</span>
                             </label>
-                            <input name="name" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm placeholder-gray-400 transition-all" placeholder="例如：Sprint 10" required>
+                            <input name="name" data-testid="create-sprint-name-input" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm placeholder-gray-400 transition-all" placeholder="例如：Sprint 10" required>
                         </div>
                         <div class="col-span-2 md:col-span-1">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
@@ -93,13 +93,13 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
                                 开始日期 <span class="text-red-500">*</span>
                             </label>
-                            <input name="start_date" type="date" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm transition-all" required>
+                            <input name="start_date" data-testid="create-sprint-start-date-input" type="date" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm transition-all" required>
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
                                 结束日期 <span class="text-red-500">*</span>
                             </label>
-                            <input name="end_date" type="date" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm transition-all" required>
+                            <input name="end_date" data-testid="create-sprint-end-date-input" type="date" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm transition-all" required>
                         </div>
                     </div>
 
@@ -147,7 +147,7 @@
                     </div>
                     <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
                         <button type="button" onclick="app.modals.close()" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">取消</button>
-                        <button type="submit" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/30 transition-all hover:scale-105">
+                        <button type="submit" data-testid="create-sprint-submit-button" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/30 transition-all hover:scale-105">
                             <i class="fa-solid fa-rocket mr-2"></i>启动迭代
                         </button>
                     </div>

@@ -143,11 +143,11 @@
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">缺陷标题 <span class="text-red-500">*</span></label>
-                            <input name="title" required class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all" placeholder="例如：登录页面无法提交表单">
+                            <input name="title" data-testid="create-bug-title-input" required class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all" placeholder="例如：登录页面无法提交表单">
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">缺陷描述 <span class="text-red-500">*</span></label>
-                            <textarea name="description" required rows="4" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="详细描述缺陷的情况..."></textarea>
+                            <textarea name="description" data-testid="create-bug-description-input" required rows="4" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="详细描述缺陷的情况..."></textarea>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -226,7 +226,7 @@
 
                     <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
                         <button type="button" onclick="app.modals.close()" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">取消</button>
-                        <button type="submit" class="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-red-500/30 transition-all hover:scale-105">
+                        <button type="submit" data-testid="create-bug-submit-button" class="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-red-500/30 transition-all hover:scale-105">
                             <i class="fa-solid fa-plus mr-2"></i>创建缺陷
                         </button>
                     </div>
@@ -292,7 +292,7 @@
             <div class="max-h-[75vh] overflow-y-auto pr-1">
                 <div class="mb-6">
                     <div class="flex items-start justify-between mb-3">
-                        <h3 class="text-2xl font-bold text-gray-900 flex-1">${safeTitle}</h3>
+                        <h3 class="text-2xl font-bold text-gray-900 flex-1" data-testid="bug-detail-title">${safeTitle}</h3>
                         <div class="flex flex-wrap items-center justify-end gap-2">
                             <button onclick="app.modals.editBug(${bug.id})" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-all text-sm font-medium">
                                 <i class="fa-solid fa-edit mr-2"></i>编辑
@@ -356,7 +356,7 @@
                     </div>
                     ` : ''}
 
-                    <div class="space-y-3">
+                    <div class="space-y-3" data-testid="bug-detail-evidence-section">
                         <div class="flex items-center justify-between">
                             <h4 class="text-sm font-bold text-gray-900">证据时间线</h4>
                             <button onclick="app.modals.addBugEvidence(${bug.id})" class="text-sm font-semibold text-orange-700 hover:text-orange-800">
@@ -603,23 +603,23 @@
                 <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
                     当前缺陷：<span class="font-semibold text-gray-900">${escapeHtml(bug.title)}</span>
                 </div>
-                <form onsubmit="app.handlers.submitBugEvidence(event, ${bug.id})" class="space-y-4">
+                <form data-testid="add-bug-evidence-form" onsubmit="app.handlers.submitBugEvidence(event, ${bug.id})" class="space-y-4">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">补充说明</label>
-                        <textarea name="comment" rows="3" class="block w-full rounded-xl border-2 border-orange-200 bg-white focus:border-orange-400 focus:ring-0 py-3 px-4 text-sm resize-none" placeholder="例如：切换为 Firefox 后同样复现"></textarea>
+                        <textarea name="comment" data-testid="add-bug-evidence-comment-input" rows="3" class="block w-full rounded-xl border-2 border-orange-200 bg-white focus:border-orange-400 focus:ring-0 py-3 px-4 text-sm resize-none" placeholder="例如：切换为 Firefox 后同样复现"></textarea>
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">异常堆栈</label>
-                        <textarea name="stack_trace" rows="8" class="block w-full rounded-xl border-2 border-orange-200 bg-gray-950 text-gray-100 focus:border-orange-400 focus:ring-0 py-3 px-4 text-sm font-mono resize-y" placeholder="粘贴新的异常堆栈或报错日志"></textarea>
+                        <textarea name="stack_trace" data-testid="add-bug-evidence-stack-input" rows="8" class="block w-full rounded-xl border-2 border-orange-200 bg-gray-950 text-gray-100 focus:border-orange-400 focus:ring-0 py-3 px-4 text-sm font-mono resize-y" placeholder="粘贴新的异常堆栈或报错日志"></textarea>
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">截图上传</label>
-                        <input type="file" name="screenshots" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" multiple class="block w-full rounded-xl border-2 border-dashed border-orange-200 bg-white px-4 py-3 text-sm text-gray-600 file:mr-4 file:rounded-lg file:border-0 file:bg-orange-100 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-orange-700 hover:file:bg-orange-200">
+                        <input type="file" name="screenshots" data-testid="add-bug-evidence-file-input" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" multiple class="block w-full rounded-xl border-2 border-dashed border-orange-200 bg-white px-4 py-3 text-sm text-gray-600 file:mr-4 file:rounded-lg file:border-0 file:bg-orange-100 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-orange-700 hover:file:bg-orange-200">
                         <p class="mt-2 text-xs text-gray-500">可只补充说明，也可只贴堆栈或截图；留空则不会提交成功</p>
                     </div>
                     <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
                         <button type="button" onclick="app.modals.viewBug(${bug.id})" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">返回详情</button>
-                        <button type="submit" class="bg-orange-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-orange-700 transition-colors">
+                        <button type="submit" data-testid="add-bug-evidence-submit-button" class="bg-orange-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-orange-700 transition-colors">
                             <i class="fa-solid fa-camera mr-2"></i>提交证据
                         </button>
                     </div>

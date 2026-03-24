@@ -16,7 +16,7 @@
         this.renderTopContext();
 
         const teamsHtml = data.teams.map(team => `
-            <div class="bg-white rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-lg transition-all duration-200 p-6">
+            <div class="bg-white rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-lg transition-all duration-200 p-6" data-testid="team-card" data-team-id="${team.id}">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center">
                         <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-blue-500/30 mr-4">
@@ -38,7 +38,7 @@
                         <i class="fa-solid fa-eye"></i>
                         <span>查看详情</span>
                     </button>
-                    <button onclick="app.handlers.joinTeam(${team.id})" class="flex-1 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold py-2.5 px-4 rounded-lg transition-all flex items-center justify-center gap-2 border border-purple-200">
+                    <button type="button" data-testid="join-team-button" data-team-id="${team.id}" onclick="app.handlers.joinTeam(${team.id})" class="flex-1 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold py-2.5 px-4 rounded-lg transition-all flex items-center justify-center gap-2 border border-purple-200">
                         <i class="fa-solid fa-right-to-bracket"></i>
                         <span>加入团队</span>
                     </button>
@@ -59,7 +59,7 @@
                             <p class="text-gray-500 mt-1">团队管理</p>
                         </div>
                     </div>
-                    <button onclick="app.modals.createTeam(${orgId})" class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-blue-500/30 transition-all hover:scale-105 flex items-center gap-2">
+                    <button type="button" data-testid="create-team-button" onclick="app.modals.createTeam(${orgId})" class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-xl shadow-lg shadow-blue-500/30 transition-all hover:scale-105 flex items-center gap-2">
                         <i class="fa-solid fa-plus"></i>
                         <span>创建团队</span>
                     </button>
@@ -90,7 +90,7 @@
                             </div>
                             <h3 class="text-xl font-semibold text-gray-900 mb-2">暂无团队</h3>
                             <p class="text-gray-500 mb-6 max-w-sm mx-auto">创建您的第一个团队，开始组织成员协作</p>
-                            <button onclick="app.modals.createTeam(${orgId})" class="inline-flex items-center text-blue-600 font-semibold hover:text-blue-700 hover:underline">
+                            <button type="button" data-testid="create-team-empty-button" onclick="app.modals.createTeam(${orgId})" class="inline-flex items-center text-blue-600 font-semibold hover:text-blue-700 hover:underline">
                                 <i class="fa-solid fa-plus mr-2"></i>创建团队
                             </button>
                         </div>

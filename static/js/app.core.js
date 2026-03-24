@@ -343,7 +343,7 @@
                                     <i class="fa-solid fa-building w-5 text-center mr-3 text-base ${this.currentView === 'organizations' || this.currentView === 'org_members' ? 'text-purple-400' : 'text-gray-500'}"></i>
                                     组织
                                 </a>
-                                <a href="#" onclick="app.modals.selectOrgForTeams()" class="nav-item group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all ${this.currentView === 'teams' || this.currentView === 'team_details' ? 'active text-purple-300' : 'text-gray-300 hover:bg-sidebar-hover hover:text-white'}">
+                                <a href="#" data-testid="sidebar-nav-teams" onclick="app.modals.selectOrgForTeams(); return false;" class="nav-item group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all ${this.currentView === 'teams' || this.currentView === 'team_details' ? 'active text-purple-300' : 'text-gray-300 hover:bg-sidebar-hover hover:text-white'}">
                                     <i class="fa-solid fa-users w-5 text-center mr-3 text-base ${this.currentView === 'teams' || this.currentView === 'team_details' ? 'text-purple-400' : 'text-gray-500'}"></i>
                                     团队
                                 </a>
