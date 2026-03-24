@@ -13,6 +13,12 @@
                 topContextHtml: '',
                 mainHtml: '',
                 modalHtml: '',
+                modalOptions: {
+                    contentClass: '',
+                    contentStyle: '',
+                    bodyClass: '',
+                    showResizeHint: false
+                },
                 showModal: false,
                 isLoading: true,
                 handlers: {},

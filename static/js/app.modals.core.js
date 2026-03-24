@@ -2,7 +2,13 @@
     const MiniAgile = window.MiniAgile = window.MiniAgile || {};
     MiniAgile.modals = MiniAgile.modals || {};
 
-        MiniAgile.modals.modalShow = function(html) {
+        MiniAgile.modals.modalShow = function(html, options = {}) {
+            this.modalOptions = {
+                contentClass: options.contentClass || '',
+                contentStyle: options.contentStyle || '',
+                bodyClass: options.bodyClass || '',
+                showResizeHint: !!options.showResizeHint
+            };
             this.modalHtml = `
                 <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-purple-50 to-white">
                      <div class="flex items-center gap-3">
@@ -15,7 +21,12 @@
                         <i class="fa-solid fa-times"></i>
                      </button>
                 </div>
-                <div class="p-6">
+                ${this.modalOptions.showResizeHint ? `
+                <div class="text-[11px] text-gray-400 px-6 pt-3 select-none">
+                    可拖动右下角调整弹窗大小
+                </div>
+                ` : ''}
+                <div class="${this.modalOptions.bodyClass || 'p-6'}">
                     ${html}
                 </div>
             `;
@@ -25,6 +36,12 @@
         MiniAgile.modals.modalClose = function() {
             this.showModal = false;
             this.modalHtml = '';  // 清空内容，确保下次打开时 DOM 重新渲染
+            this.modalOptions = {
+                contentClass: '',
+                contentStyle: '',
+                bodyClass: '',
+                showResizeHint: false
+            };
         };
 
 })();

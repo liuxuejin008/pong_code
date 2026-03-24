@@ -34,6 +34,26 @@
 
 【补充说明】`;
 
+    const RESIZABLE_BUG_MODAL_STYLE = [
+        'width:min(94vw, 78rem)',
+        'max-width:min(94vw, 78rem)',
+        'height:min(90vh, 56rem)',
+        'max-height:90vh',
+        'min-width:58rem',
+        'min-height:36rem',
+        'resize:both',
+        'overflow:auto'
+    ].join('; ');
+
+    function showResizableBugModal(context, html) {
+        context.modalShow(html, {
+            contentClass: 'overflow-auto',
+            contentStyle: RESIZABLE_BUG_MODAL_STYLE,
+            bodyClass: 'p-6',
+            showResizeHint: true
+        });
+    }
+
     function renderEvidenceTimeline(evidences) {
         if (!evidences || evidences.length === 0) {
             return `
@@ -103,14 +123,14 @@
         `;
     }
 
-    MiniAgile.modals.modalCreateBug = async function(projectId) {
+    MiniAgile.modals.modalCreateBug = async function(projectId, defaultRequirementId = null) {
         const projectData = await this.api(`/projects/${projectId}`);
         const sprints = projectData?.sprints || [];
         const requirements = await this.api(`/projects/${projectId}/requirements`);
         const users = await this.api('/users/search');
 
-        this.modalShow(`
-            <div class="max-h-[75vh] overflow-y-auto pr-1">
+        showResizableBugModal(this, `
+            <div class="pr-1">
                 <div class="mb-6">
                     <h3 class="text-2xl font-bold text-gray-900 mb-2">新建缺陷</h3>
                     <p class="text-gray-500 text-sm">基础信息必填，首次证据可选补充</p>
@@ -153,7 +173,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">复现步骤</label>
-                            <textarea name="steps_to_reproduce" data-bug-steps-template="1" rows="10" class="block w-full min-h-[14rem] rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-y">${escapeHtml(DEFAULT_BUG_STEPS_TEMPLATE)}</textarea>
+                            <textarea name="steps_to_reproduce" data-bug-steps-template="1" rows="14" style="min-height: 19rem;" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-y">${escapeHtml(DEFAULT_BUG_STEPS_TEMPLATE)}</textarea>
                             <p class="mt-2 text-xs text-gray-500">环境、步骤、期望结果等请统一填写在该模板中</p>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
@@ -176,7 +196,7 @@
                             <label class="block text-sm font-semibold text-gray-700 mb-2">关联需求（可选）</label>
                             <select name="requirement_id" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
                                 <option value="">不关联</option>
-                                ${(requirements || []).map(r => `<option value="${r.id}">${escapeHtml(r.title)}</option>`).join('')}
+                                ${(requirements || []).map(r => `<option value="${r.id}" ${String(defaultRequirementId) === String(r.id) ? 'selected' : ''}>${escapeHtml(r.title)}</option>`).join('')}
                             </select>
                         </div>
                     </div>
@@ -417,8 +437,8 @@
                             </div>
                         </div>` : '';
 
-        this.modalShow(`
-            <div data-bug-edit-modal="1" class="max-w-5xl w-full max-h-[88vh] overflow-y-auto pr-1">
+        showResizableBugModal(this, `
+            <div data-bug-edit-modal="1" class="w-full pr-1">
                 <div class="mb-4">
                     <h3 class="text-2xl font-bold text-gray-900 mb-1">编辑缺陷</h3>
                     <p class="text-xs text-gray-500 uppercase tracking-wider font-bold">ID: #${bug.id}</p>
@@ -466,7 +486,7 @@
                         ${legacyCompatBlock}
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">复现步骤</label>
-                            <textarea name="steps_to_reproduce" rows="10" class="block w-full min-h-[14rem] rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm resize-y">${safeStepsForEdit}</textarea>
+                            <textarea name="steps_to_reproduce" rows="14" style="min-height: 19rem;" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm resize-y">${safeStepsForEdit}</textarea>
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">预估工时 (h)</label>
