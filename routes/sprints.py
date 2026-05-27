@@ -30,7 +30,7 @@ def create_sprint(project_id):
     data = request.get_json()
     project = Project.query.get_or_404(project_id)
     if not _check_project_access(project):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     try:
         start_date = parse_date(data.get('start_date'), 'start_date', required=True)
         end_date = parse_date(data.get('end_date'), 'end_date', required=True)
@@ -68,7 +68,7 @@ def get_sprint(sprint_id):
 def update_sprint(sprint_id):
     sprint = Sprint.query.get_or_404(sprint_id)
     if not _check_project_access(sprint.project):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     data = request.get_json()
     if 'name' in data:
         sprint.name = data['name']
@@ -104,7 +104,7 @@ def update_sprint(sprint_id):
 def add_sprint_worklog(sprint_id):
     sprint = Sprint.query.get_or_404(sprint_id)
     if not _check_project_access(sprint.project):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     data = request.get_json()
     try:
         log_date = parse_date(data.get('date'), 'date', required=True)
@@ -128,7 +128,7 @@ def add_sprint_worklog(sprint_id):
 def update_sprint_requirements(sprint_id):
     sprint = Sprint.query.get_or_404(sprint_id)
     if not _check_project_access(sprint.project):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     data = request.get_json()
     requirement_ids = data.get('requirement_ids', [])
     try:
@@ -165,14 +165,14 @@ def get_sprint_requirements(sprint_id):
 def get_board(project_id):
     project = Project.query.get_or_404(project_id)
     if not _check_project_access(project):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     sprint_id = request.args.get('sprint_id', type=int)
     if sprint_id:
         target_sprint = Sprint.query.filter_by(id=sprint_id, project_id=project_id).first()
     else:
         target_sprint = project.sprints.filter_by(status='active').first()
     if not target_sprint:
-        return jsonify({'error': 'No active sprint', 'has_sprint': False})
+        return jsonify({'error': '没有活跃的迭代', 'has_sprint': False})
     requirements = Requirement.query.filter_by(sprint_id=target_sprint.id).order_by(Requirement.priority).all()
     all_issues = target_sprint.issues.all()
     all_bugs = Bug.query.filter(

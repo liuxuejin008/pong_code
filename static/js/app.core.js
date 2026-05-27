@@ -47,12 +47,12 @@
                         if (endpoint === '/auth/login') {
                             return await response.json();
                         }
-                        return { error: 'Unauthorized' };
+                        return { error: '未授权，请先登录' };
                     }
                     return await response.json();
                 } catch (err) {
                     console.error('API Error:', err);
-                    return { error: 'Network error or server unreachable' };
+                    return { error: '网络错误或服务器无法连接' };
                 }
             },
 
@@ -61,7 +61,7 @@
                 this.isLoading = true;
                 let timeoutId;
                 const timeoutPromise = new Promise((_, reject) => {
-                    timeoutId = setTimeout(() => reject(new Error('auth status timeout')), 10000);
+                    timeoutId = setTimeout(() => reject(new Error('认证状态获取超时')), 10000);
                 });
                 try {
                     const res = await Promise.race([
@@ -214,7 +214,7 @@
 
             renderTopContext() {
                 if (this.currentProject) {
-                    const orgName = this.currentOrg ? this.currentOrg.name : 'Unknown';
+                    const orgName = this.currentOrg ? this.currentOrg.name : '未知';
                     this.topContextHtml = `
                         <div class="flex items-center space-x-2">
                             <span class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">${orgName[0] || '?'}</span>

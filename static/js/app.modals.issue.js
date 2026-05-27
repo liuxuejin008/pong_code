@@ -250,21 +250,21 @@
                 <!-- Time Tracking Tab -->
                 <div id="tab-time" class="hidden">
                     <div class="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
-                        <h4 class="text-sm font-bold text-gray-900 mb-3">Log Work</h4>
+                        <h4 class="text-sm font-bold text-gray-900 mb-3">登记工时</h4>
                         <form onsubmit="app.handlers.submitWorkLog(event, ${i.id})" class="flex flex-col gap-3">
                             <div class="grid grid-cols-2 gap-3">
                                 <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}" class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500" title="工时日期">
-                                <input type="number" name="hours" step="0.25" min="0.25" placeholder="Hours (e.g. 1.5)" required class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500">
+                                <input type="number" name="hours" step="0.25" min="0.25" placeholder="工时（如 1.5）" required class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500">
                             </div>
-                            <input type="text" name="description" placeholder="What did you work on?" class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500">
-                            <button type="submit" class="bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-purple-700 transition-colors">Log Time</button>
+                            <input type="text" name="description" placeholder="工作内容描述" class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500">
+                            <button type="submit" class="bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-purple-700 transition-colors">记录工时</button>
                         </form>
                     </div>
 
                     <div class="space-y-3">
                         <h4 class="text-sm font-bold text-gray-900 flex justify-between items-center">
-                            <span>Work History</span>
-                            <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">Total: ${i.time_spent || 0}h</span>
+                            <span>工时记录</span>
+                            <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">总计: ${i.time_spent || 0}h</span>
                         </h4>
                         <div class="max-h-60 overflow-y-auto pr-2 space-y-2">
                             ${logs.length > 0 ? logs.map(log => `
@@ -279,7 +279,7 @@
                                         ${log.hours}h
                                     </div>
                                 </div>
-                            `).join('') : '<div class="text-gray-400 text-sm text-center py-4 italic">No work logged yet.</div>'}
+                            `).join('') : '<div class="text-gray-400 text-sm text-center py-4 italic">暂无工时记录。</div>'}
                         </div>
                     </div>
                 </div>

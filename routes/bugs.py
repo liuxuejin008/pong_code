@@ -38,7 +38,7 @@ def _check_org_admin(org):
 def get_bugs(project_id):
     project = Project.query.get_or_404(project_id)
     if not _check_project_access(project):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     search = request.args.get('search', '').strip()
     status = request.args.get('status', '').strip()
     severity = request.args.get('severity', '').strip()
@@ -75,7 +75,7 @@ def get_bugs(project_id):
 def create_bug(project_id):
     project = Project.query.get_or_404(project_id)
     if not _check_project_access(project):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     data = request.get_json()
     if not data.get('title') or not data.get('description'):
         return jsonify({'error': '标题和缺陷描述为必填项'}), 400
@@ -111,7 +111,7 @@ def create_bug(project_id):
 def get_bug(bug_id):
     bug = Bug.query.get_or_404(bug_id)
     if not _check_bug_access(bug):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     logs = bug.work_logs.order_by(BugWorkLog.date.desc(), BugWorkLog.created_at.desc()).all()
     return jsonify({
         'bug': bug.to_dict(),
@@ -124,7 +124,7 @@ def get_bug(bug_id):
 def update_bug(bug_id):
     bug = Bug.query.get_or_404(bug_id)
     if not _check_bug_access(bug):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     data = request.get_json()
     if 'title' in data:
         bug.title = data['title']
@@ -181,7 +181,7 @@ def delete_bug(bug_id):
     bug = Bug.query.get_or_404(bug_id)
     org = bug.project.organization
     if not _check_org_admin(org):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     db.session.delete(bug)
     db.session.commit()
     return jsonify({'success': True})
@@ -192,7 +192,7 @@ def delete_bug(bug_id):
 def add_bug_worklog(bug_id):
     bug = Bug.query.get_or_404(bug_id)
     if not _check_bug_access(bug):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     data = request.get_json()
     try:
         log_date = parse_date(data.get('date'), 'date', required=True)
@@ -216,7 +216,7 @@ def add_bug_worklog(bug_id):
 def get_bugs_stats(project_id):
     project = Project.query.get_or_404(project_id)
     if not _check_project_access(project):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     bugs = Bug.query.filter_by(project_id=project_id).all()
     stats = {
         'total': len(bugs),

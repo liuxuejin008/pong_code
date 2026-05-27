@@ -38,7 +38,7 @@ def _check_org_admin(org):
 def get_requirements(project_id):
     project = Project.query.get_or_404(project_id)
     if not _check_project_access(project):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     search = request.args.get('search', '').strip()
     status = request.args.get('status', '').strip()
     priority = request.args.get('priority', '').strip()
@@ -63,7 +63,7 @@ def get_requirements(project_id):
 def create_requirement(project_id):
     project = Project.query.get_or_404(project_id)
     if not _check_project_access(project):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     data = request.get_json()
     if not data.get('title') or not data.get('content'):
         return jsonify({'error': '标题和需求内容为必填项'}), 400
@@ -94,7 +94,7 @@ def create_requirement(project_id):
 def get_requirement(req_id):
     requirement = Requirement.query.get_or_404(req_id)
     if not _check_requirement_access(requirement):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     return jsonify(requirement.to_dict())
 
 
@@ -103,7 +103,7 @@ def get_requirement(req_id):
 def update_requirement(req_id):
     requirement = Requirement.query.get_or_404(req_id)
     if not _check_requirement_access(requirement):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     data = request.get_json()
     if 'title' in data:
         requirement.title = data['title']
@@ -139,7 +139,7 @@ def delete_requirement(req_id):
     requirement = Requirement.query.get_or_404(req_id)
     org = requirement.project.organization
     if not _check_org_admin(org):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     db.session.delete(requirement)
     db.session.commit()
     return jsonify({'success': True})
@@ -150,7 +150,7 @@ def delete_requirement(req_id):
 def get_requirements_stats(project_id):
     project = Project.query.get_or_404(project_id)
     if not _check_project_access(project):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     requirements = Requirement.query.filter_by(project_id=project_id).all()
     stats = {
         'total': len(requirements),

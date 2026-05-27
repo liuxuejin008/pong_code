@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,17 +16,17 @@
             <div class="text-sm lg:flex-grow">
                 {% if current_user.is_authenticated %}
                 <a href="{{ url_for('dashboard') }}" class="block mt-4 lg:inline-block lg:mt-0 text-blue-200 hover:text-white mr-4">
-                    Dashboard
+                    仪表盘
                 </a>
                 {% endif %}
             </div>
             <div>
                 {% if current_user.is_authenticated %}
-                <span class="text-blue-200 mr-4">Hi, {{ current_user.username }}</span>
-                <a href="{{ url_for('logout') }}" class="inline-block text-sm px-4 py-2 leading-none border rounded text-white border-white hover:border-transparent hover:text-blue-500 hover:bg-white mt-4 lg:mt-0">Logout</a>
+                <span class="text-blue-200 mr-4">你好，{{ current_user.username }}</span>
+                <a href="{{ url_for('logout') }}" class="inline-block text-sm px-4 py-2 leading-none border rounded text-white border-white hover:border-transparent hover:text-blue-500 hover:bg-white mt-4 lg:mt-0">退出</a>
                 {% else %}
-                <a href="{{ url_for('login') }}" class="inline-block text-sm px-4 py-2 leading-none border rounded text-white border-white hover:border-transparent hover:text-blue-500 hover:bg-white mt-4 lg:mt-0">Login</a>
-                <a href="{{ url_for('register') }}" class="inline-block text-sm px-4 py-2 leading-none border rounded text-white border-white hover:border-transparent hover:text-blue-500 hover:bg-white mt-4 lg:mt-0 ml-2">Register</a>
+                <a href="{{ url_for('login') }}" class="inline-block text-sm px-4 py-2 leading-none border rounded text-white border-white hover:border-transparent hover:text-blue-500 hover:bg-white mt-4 lg:mt-0">登录</a>
+                <a href="{{ url_for('register') }}" class="inline-block text-sm px-4 py-2 leading-none border rounded text-white border-white hover:border-transparent hover:text-blue-500 hover:bg-white mt-4 lg:mt-0 ml-2">注册</a>
                 {% endif %}
             </div>
         </div>
