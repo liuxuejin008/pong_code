@@ -6,6 +6,7 @@ Mini-Agile 应用入口。
 import os
 
 from flask import Flask, send_from_directory, jsonify
+from sqlalchemy import inspect
 from sqlalchemy import text
 
 from extensions import db, login_manager
@@ -13,6 +14,21 @@ from extensions import db, login_manager
 # 应用根目录（与 app.py 同目录），用于稳定解析 static 路径，避免重启后 403
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(ROOT_DIR, 'static')
+BUG_EVIDENCE_UPLOAD_DIR = os.path.join(STATIC_DIR, 'uploads', 'bug-evidence')
+
+
+def ensure_bug_evidence_schema():
+    """兼容历史数据库：补齐 bug 表新增字段。"""
+    inspector = inspect(db.engine)
+    if 'bug' not in inspector.get_table_names():
+        return
+
+    existing_columns = {column['name'] for column in inspector.get_columns('bug')}
+    if 'latest_stack_trace' not in existing_columns:
+        db.session.execute(text('ALTER TABLE bug ADD COLUMN latest_stack_trace TEXT'))
+    if 'evidence_count' not in existing_columns:
+        db.session.execute(text('ALTER TABLE bug ADD COLUMN evidence_count INTEGER DEFAULT 0'))
+    db.session.commit()
 
 
 def create_app():
@@ -25,6 +41,7 @@ def create_app():
     )
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
+    app.config['BUG_EVIDENCE_UPLOAD_DIR'] = os.getenv('BUG_EVIDENCE_UPLOAD_DIR', BUG_EVIDENCE_UPLOAD_DIR)
 
     db.init_app(app)
     login_manager.init_app(app)
@@ -61,7 +78,9 @@ def create_app():
             return jsonify({'status': 'degraded'}), 503
 
     with app.app_context():
+        os.makedirs(app.config['BUG_EVIDENCE_UPLOAD_DIR'], exist_ok=True)
         db.create_all()
+        ensure_bug_evidence_schema()
 
     return app
 
@@ -69,4 +88,6 @@ def create_app():
 app = create_app()
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    debug = os.getenv('FLASK_DEBUG', '1') == '1'
+    use_reloader = os.getenv('FLASK_USE_RELOADER', '1') == '1'
+    app.run(debug=debug, use_reloader=use_reloader, port=5001)

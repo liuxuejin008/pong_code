@@ -115,7 +115,7 @@
                 ) : 'border-gray-300 bg-gray-50/30';
 
                 return `
-                    <div class="swimlane mb-4 rounded-xl border-2 ${priorityColor} overflow-hidden" data-swimlane="${swimlaneId}">
+                    <div class="swimlane mb-4 rounded-xl border-2 ${priorityColor} overflow-hidden" data-testid="board-swimlane-${swimlaneId}" data-swimlane="${swimlaneId}">
                         <!-- 泳道标题 -->
                         <div class="swimlane-header flex items-center justify-between px-4 py-3 bg-white/80 border-b border-gray-200">
                             <div class="flex items-center gap-3">
@@ -219,7 +219,7 @@
                                     <i class="fa-solid fa-rotate text-xs"></i>
                                     <span>刷新</span>
                                 </button>
-                                <button onclick="app.modals.createIssue(${id})" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-lg shadow-purple-500/30 transition-all hover:scale-105 flex items-center gap-1.5">
+                                <button type="button" data-testid="create-issue-button" onclick="app.modals.createIssue(${id})" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-lg shadow-purple-500/30 transition-all hover:scale-105 flex items-center gap-1.5">
                                     <i class="fa-solid fa-plus text-xs"></i>
                                     <span>新建任务</span>
                                 </button>

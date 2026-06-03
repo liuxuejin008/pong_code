@@ -68,7 +68,7 @@
                         </h1>
                         <p class="mt-2 text-sm text-gray-600">跟踪和管理产品缺陷</p>
                     </div>
-                    <button onclick="app.modals.createBug(${projectId})" class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm font-semibold rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg shadow-red-500/30 transform hover:scale-105">
+                    <button type="button" data-testid="create-bug-button" onclick="app.modals.createBug(${projectId})" class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm font-semibold rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg shadow-red-500/30 transform hover:scale-105">
                         <i class="fa-solid fa-plus"></i>
                         <span>新建缺陷</span>
                     </button>
@@ -186,7 +186,7 @@
                             </div>
                             <h3 class="text-lg font-semibold text-gray-900 mb-2">暂无缺陷</h3>
                             <p class="text-gray-600 mb-4">当前没有任何缺陷记录</p>
-                            <button onclick="app.modals.createBug(${projectId})" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-medium">
+                            <button type="button" data-testid="create-bug-empty-button" onclick="app.modals.createBug(${projectId})" class="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-medium">
                                 <i class="fa-solid fa-plus mr-2"></i>新建缺陷
                             </button>
                         </div>
@@ -198,12 +198,14 @@
                                         <h3 class="text-lg font-semibold text-gray-900 group-hover:text-red-700 transition-colors">${bug.title}</h3>
                                         <span class="px-2.5 py-1 text-xs font-semibold rounded-full border ${severityColors[bug.severity]}">${severityLabels[bug.severity]}</span>
                                         <span class="px-2.5 py-1 text-xs font-semibold rounded-full border ${statusColors[bug.status]}">${statusLabels[bug.status]}</span>
+                                        ${(bug.evidence_count || 0) > 0 ? `<span class="px-2.5 py-1 text-xs font-semibold rounded-full border border-orange-200 bg-orange-50 text-orange-700"><i class="fa-solid fa-camera mr-1"></i>${bug.evidence_count} 条证据</span>` : ''}
                                     </div>
                                     <p class="text-sm text-gray-600 mb-3 line-clamp-2">${bug.description}</p>
                                     <div class="flex items-center gap-4 text-xs text-gray-500">
                                         <span><i class="fa-solid fa-user mr-1"></i>报告者: ${bug.reporter_name || '未知'}</span>
                                         ${bug.assignee_name ? `<span class="text-purple-600"><i class="fa-solid fa-user-gear mr-1"></i>负责人: ${bug.assignee_name}</span>` : '<span class="text-orange-600"><i class="fa-solid fa-user-slash mr-1"></i>未分配</span>'}
                                         <span><i class="fa-solid fa-calendar mr-1"></i>创建于 ${new Date(bug.created_at).toLocaleDateString('zh-CN')}</span>
+                                        ${bug.latest_stack_trace ? `<span class="text-gray-600"><i class="fa-solid fa-terminal mr-1"></i>含异常堆栈</span>` : ''}
                                         ${bug.sprint_name ? `<span class="text-indigo-600"><i class="fa-solid fa-rotate mr-1"></i>${bug.sprint_name}</span>` : ''}
                                         ${bug.requirement_title ? `<span class="text-blue-600"><i class="fa-solid fa-file-lines mr-1"></i>${bug.requirement_title}</span>` : ''}
                                     </div>

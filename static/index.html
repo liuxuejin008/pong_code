@@ -290,7 +290,7 @@
 
     <!-- Modal Overlay -->
     <div id="modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center transition-opacity p-4" :class="showModal ? 'opacity-100' : 'opacity-0 pointer-events-none'" @click.self="modals.close()">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto transform transition-all border border-gray-200" id="modal-content" :class="showModal ? 'scale-100' : 'scale-95'">
+        <div class="bg-white rounded-2xl shadow-2xl w-full transform transition-all border border-gray-200" id="modal-content" :class="[showModal ? 'scale-100' : 'scale-95', modalOptions.contentClass || 'max-w-lg max-h-[90vh] overflow-y-auto']" :style="modalOptions.contentStyle || ''">
             <!-- Modal Content -->
             <div v-html="modalHtml"></div>
         </div>

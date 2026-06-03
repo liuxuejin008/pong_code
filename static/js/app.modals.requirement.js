@@ -16,13 +16,13 @@
                         <label class="block text-sm font-semibold text-gray-700 mb-2">
                             需求标题 <span class="text-red-500">*</span>
                         </label>
-                        <input name="title" required class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all" placeholder="例如：用户登录功能优化">
+                        <input name="title" data-testid="create-requirement-title-input" required class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all" placeholder="例如：用户登录功能优化">
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">
                             需求内容 <span class="text-red-500">*</span>
                         </label>
-                        <textarea name="content" required rows="6" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="详细描述这个需求的内容和目标..."></textarea>
+                        <textarea name="content" data-testid="create-requirement-content-input" required rows="6" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="详细描述这个需求的内容和目标..."></textarea>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -60,7 +60,7 @@
                     </div>
                     <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
                         <button type="button" onclick="app.modals.close()" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">取消</button>
-                        <button type="submit" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/30 transition-all hover:scale-105">
+                        <button type="submit" data-testid="create-requirement-submit-button" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/30 transition-all hover:scale-105">
                             <i class="fa-solid fa-plus mr-2"></i>创建需求
                         </button>
                     </div>

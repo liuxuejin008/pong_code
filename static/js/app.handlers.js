@@ -490,15 +490,43 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>创建中...';
 
-            const form = Object.fromEntries(new FormData(e.target));
-            // 处理空值
+            const formData = new FormData(e.target);
+            const form = Object.fromEntries(formData);
             if (form.assignee_id === '') form.assignee_id = null;
             if (form.sprint_id === '') form.sprint_id = null;
             if (form.requirement_id === '') form.requirement_id = null;
-            
-            const res = await this.api(`/projects/${projectId}/bugs`, 'POST', form);
+
+            const bugData = {
+                title: form.title,
+                description: form.description,
+                severity: parseInt(form.severity, 10) || 3,
+                status: form.status,
+                steps_to_reproduce: form.steps_to_reproduce,
+                assignee_id: form.assignee_id,
+                sprint_id: form.sprint_id,
+                requirement_id: form.requirement_id
+            };
+
+            const res = await this.api(`/projects/${projectId}/bugs`, 'POST', bugData);
 
             if (res && !res.error) {
+                const evidenceComment = (form.evidence_comment || '').trim();
+                const stackTrace = (form.stack_trace || '').trim();
+                const screenshots = formData.getAll('screenshots').filter(file => file && file.size > 0);
+                const hasInitialEvidence = evidenceComment || stackTrace || screenshots.length > 0;
+
+                if (hasInitialEvidence) {
+                    const evidenceFormData = new FormData();
+                    evidenceFormData.append('comment', evidenceComment);
+                    evidenceFormData.append('stack_trace', stackTrace);
+                    screenshots.forEach(file => evidenceFormData.append('screenshots', file));
+
+                    const evidenceRes = await this.api(`/bugs/${res.id}/evidences`, 'POST', evidenceFormData);
+                    if (!evidenceRes || evidenceRes.error) {
+                        const detail = evidenceRes?.error ? `（${evidenceRes.error}）` : '';
+                        alert(`缺陷已创建，但首次证据保存失败，请稍后补充${detail}`);
+                    }
+                }
                 this.modals.close();
                 this.navigate('bugs', { id: projectId });
             } else {
@@ -515,26 +543,59 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>更新中...';
 
-            const form = Object.fromEntries(new FormData(e.target));
-            // 处理空值
-            if (form.assignee_id === '') form.assignee_id = null;
-            if (form.sprint_id === '') form.sprint_id = null;
-            if (form.requirement_id === '') form.requirement_id = null;
-            
-            const res = await this.api(`/bugs/${bugId}`, 'PUT', form);
+            const formData = new FormData(e.target);
+            const assigneeRaw = formData.get('assignee_id');
+            const sprintRaw = formData.get('sprint_id');
+            const reqRaw = formData.get('requirement_id');
 
-            if (res && !res.error) {
-                this.modals.close();
-                // 根据当前视图决定导航
-                if (this.currentView === 'board') {
-                    this.navigate('board', { id: res.project_id });
-                } else {
-                    this.navigate('bugs', { id: res.project_id });
-                }
-            } else {
+            const putBody = {
+                title: formData.get('title'),
+                description: formData.get('description'),
+                severity: parseInt(formData.get('severity'), 10) || 3,
+                status: formData.get('status'),
+                steps_to_reproduce: formData.get('steps_to_reproduce'),
+                time_estimate: parseFloat(formData.get('time_estimate')) || 0,
+                assignee_id: assigneeRaw === '' || assigneeRaw == null ? null : assigneeRaw,
+                sprint_id: sprintRaw === '' || sprintRaw == null ? null : sprintRaw,
+                requirement_id: reqRaw === '' || reqRaw == null ? null : reqRaw
+            };
+
+            const evidenceComment = String(formData.get('evidence_comment') || '').trim();
+            const stackTrace = String(formData.get('stack_trace') || '').trim();
+            const screenshots = formData.getAll('screenshots').filter((file) => file && file.size > 0);
+            const hasEvidence = !!(evidenceComment || stackTrace || screenshots.length > 0);
+
+            const res = await this.api(`/bugs/${bugId}`, 'PUT', putBody);
+
+            if (!res || res.error) {
                 alert(res?.error || '更新缺陷失败');
                 btn.disabled = false;
                 btn.innerHTML = originalText;
+                return;
+            }
+
+            if (hasEvidence) {
+                const evidenceFormData = new FormData();
+                evidenceFormData.append('comment', evidenceComment);
+                evidenceFormData.append('stack_trace', stackTrace);
+                screenshots.forEach((file) => evidenceFormData.append('screenshots', file));
+
+                const evidenceRes = await this.api(`/bugs/${bugId}/evidences`, 'POST', evidenceFormData);
+                if (!evidenceRes || evidenceRes.error) {
+                    const detail = evidenceRes?.error ? `（${evidenceRes.error}）` : '';
+                    alert(`缺陷已保存，但证据提交失败，请稍后补充${detail}`);
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    return;
+                }
+            }
+
+            this.modals.close();
+            // 根据当前视图决定导航
+            if (this.currentView === 'board') {
+                this.navigate('board', { id: res.project_id });
+            } else {
+                this.navigate('bugs', { id: res.project_id });
             }
         },
 
@@ -550,9 +611,28 @@
 
             if (res && !res.error) {
                 // 重新打开编辑模态框以刷新数据
-                this.modals.editBug(bugId);
+                this.modals.editBug(bugId, 'time');
             } else {
                 alert(res?.error || '记录工时失败，请重试');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        },
+
+        async handlersSubmitBugEvidence(e, bugId) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>提交中...';
+
+            const formData = new FormData(e.target);
+            const res = await this.api(`/bugs/${bugId}/evidences`, 'POST', formData);
+
+            if (res && !res.error) {
+                this.modals.viewBug(bugId);
+            } else {
+                alert(res?.error || '补充证据失败，请重试');
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
