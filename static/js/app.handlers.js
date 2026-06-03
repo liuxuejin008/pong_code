@@ -192,7 +192,14 @@
             const res = await this.api(`/sprints/${sprintId}/worklogs`, 'POST', form);
 
             if (res && !res.error) {
-                this.modals.editSprint(sprintId);
+                await this.modals.editSprint(sprintId);
+                document.getElementById('tab-sprint-details').classList.add('hidden');
+                document.getElementById('tab-sprint-reqs').classList.add('hidden');
+                document.getElementById('tab-sprint-time').classList.remove('hidden');
+                const tabs = document.querySelectorAll('#edit-sprint-tabs button');
+                tabs.forEach(b => { b.classList.remove('border-purple-500', 'text-purple-600'); b.classList.add('text-gray-500', 'border-transparent'); });
+                tabs[2].classList.add('border-purple-500', 'text-purple-600');
+                tabs[2].classList.remove('text-gray-500', 'border-transparent');
             } else {
                 alert(res?.error || '记录工时失败，请重试');
                 btn.disabled = false;
@@ -349,7 +356,14 @@
             const res = await this.api(`/issues/${issueId}/worklogs`, 'POST', form);
 
             if (res && !res.error) {
-                this.modals.editIssue(issueId);
+                await this.modals.editIssue(issueId);
+                document.getElementById('tab-details').classList.add('hidden');
+                document.getElementById('tab-time').classList.remove('hidden');
+                const tabs = document.querySelectorAll('#edit-tabs button');
+                tabs[0].classList.remove('border-purple-500', 'text-purple-600');
+                tabs[0].classList.add('text-gray-500', 'border-transparent');
+                tabs[1].classList.add('border-purple-500', 'text-purple-600');
+                tabs[1].classList.remove('text-gray-500', 'border-transparent');
             } else {
                 alert(res?.error || '记录工作失败，请重试');
                 btn.disabled = false;
@@ -549,8 +563,14 @@
             const res = await this.api(`/bugs/${bugId}/worklogs`, 'POST', form);
 
             if (res && !res.error) {
-                // 重新打开编辑模态框以刷新数据
-                this.modals.editBug(bugId);
+                await this.modals.editBug(bugId);
+                document.getElementById('bug-tab-details').classList.add('hidden');
+                document.getElementById('bug-tab-time').classList.remove('hidden');
+                const tabs = document.querySelectorAll('#bug-edit-tabs button');
+                tabs[0].classList.remove('border-red-500', 'text-red-600');
+                tabs[0].classList.add('text-gray-500', 'border-transparent');
+                tabs[1].classList.add('border-red-500', 'text-red-600');
+                tabs[1].classList.remove('text-gray-500', 'border-transparent');
             } else {
                 alert(res?.error || '记录工时失败，请重试');
                 btn.disabled = false;
