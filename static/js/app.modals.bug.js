@@ -102,11 +102,12 @@
     };
 
     MiniAgile.modals.modalViewBug = async function(bugId) {
-        const bug = await this.api(`/bugs/${bugId}`);
-        if (bug.error) {
+        const data = await this.api(`/bugs/${bugId}`);
+        if (!data || data.error) {
             alert('加载缺陷详情失败');
             return;
         }
+        const bug = data.bug;
 
         const statusLabels = {
             'open': '待处理',
