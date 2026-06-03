@@ -318,11 +318,11 @@
                         <h4 class="text-sm font-bold text-gray-900 mb-3">登记工时</h4>
                         <form onsubmit="app.handlers.submitSprintWorkLog(event, ${sprint.id})" class="flex flex-col gap-3">
                             <div class="grid grid-cols-2 gap-3">
-                                <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}" class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500">
-                                <input type="number" name="hours" step="0.25" min="0.25" placeholder="工时（例如 1.5）" required class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500">
+                                <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm">
+                                <input type="number" name="hours" step="0.25" min="0.25" placeholder="工时（例如 1.5）" required class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm">
                             </div>
-                            <textarea name="description" rows="3" placeholder="工作说明（可选）" class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500 resize-none"></textarea>
-                            <button type="submit" class="bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-purple-700 transition-colors">登记工时</button>
+                            <textarea name="description" rows="3" placeholder="工作说明（可选）" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm resize-none"></textarea>
+                            <button type="submit" class="bg-purple-600 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-purple-700 transition-colors">登记工时</button>
                         </form>
                     </div>
 
