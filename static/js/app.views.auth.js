@@ -33,7 +33,7 @@
                       </div>
                     </form>
                     <div class="mt-6 border-t border-gray-100 pt-4 text-center">
-                      <button type="button" onclick="app.navigate('register')" class="inline-flex items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition-all">
+                      <button type="button" data-testid="go-register-button" onclick="app.navigate('register')" class="inline-flex items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition-all">
                         还没有账号？去注册
                       </button>
                     </div>
@@ -73,7 +73,7 @@
                       </div>
                     </form>
                     <div class="mt-6 border-t border-gray-100 pt-4 text-center">
-                      <button type="button" onclick="app.navigate('login')" class="inline-flex items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition-all">
+                      <button type="button" data-testid="go-login-button" onclick="app.navigate('login')" class="inline-flex items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition-all">
                         已有账号，去登录
                       </button>
                     </div>

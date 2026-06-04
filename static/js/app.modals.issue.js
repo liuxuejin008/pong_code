@@ -42,7 +42,7 @@
                                 </div>
                             </label>
                             <label class="flex-1 cursor-pointer">
-                                <input type="radio" name="item_type" value="bug" class="hidden peer" onchange="app.toggleWorkItemType('bug')">
+                                <input type="radio" name="item_type" value="bug" class="hidden peer" onchange="app.modals.close(); app.modals.createBug(${projectId}, document.querySelector('select[name=&quot;requirement_id&quot;]')?.value || null)">
                                 <div class="peer-checked:border-red-500 peer-checked:bg-red-50 border-2 border-gray-200 rounded-xl p-4 text-center transition-all hover:border-red-300">
                                     <i class="fa-solid fa-bug text-2xl text-red-600 mb-2"></i>
                                     <div class="text-sm font-semibold text-gray-900">缺陷</div>
@@ -55,7 +55,7 @@
                         <label class="block text-sm font-semibold text-gray-700 mb-2">
                             <span id="title-label">任务标题</span> <span class="text-red-500">*</span>
                         </label>
-                        <input name="title" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all" placeholder="需要做什么？" required id="item-title-input">
+                        <input name="title" data-testid="create-issue-title-input" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all" placeholder="需要做什么？" required id="item-title-input">
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">
@@ -102,54 +102,9 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- 缺陷特有字段 -->
-                    <div id="bug-fields" class="hidden space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                    严重程度 <span class="text-red-500">*</span>
-                                </label>
-                                <select name="severity" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm transition-all bg-white">
-                                    <option value="1">S0-致命</option>
-                                    <option value="2">S1-严重</option>
-                                    <option value="3" selected>S2-一般</option>
-                                    <option value="4">S3-轻微</option>
-                                    <option value="5">S4-建议</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                    环境信息
-                                </label>
-                                <input name="environment" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm transition-all" placeholder="Chrome 120, Windows 11">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                复现步骤
-                            </label>
-                            <textarea name="steps_to_reproduce" rows="2" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="1. 打开页面&#10;2. 点击按钮&#10;3. 观察结果"></textarea>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                    期望结果
-                                </label>
-                                <textarea name="expected_result" rows="2" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="应该发生什么"></textarea>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                    实际结果
-                                </label>
-                                <textarea name="actual_result" rows="2" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-3 px-4 text-sm placeholder-gray-400 transition-all resize-none" placeholder="实际发生了什么"></textarea>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
                         <button type="button" onclick="app.modals.close()" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">取消</button>
-                        <button type="submit" id="create-item-btn" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/30 transition-all hover:scale-105">
+                        <button type="submit" id="create-item-btn" data-testid="create-issue-submit-button" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/30 transition-all hover:scale-105">
                             <i class="fa-solid fa-check mr-2"></i>创建任务
                         </button>
                     </div>
@@ -219,7 +174,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-2">状态</label>
-                                <select name="status" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
+                                <select name="status" data-testid="edit-issue-status-select" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
                                     <option value="todo" ${i.status === 'todo' ? 'selected' : ''}>待办</option>
                                     <option value="doing" ${i.status === 'doing' ? 'selected' : ''}>进行中</option>
                                     <option value="done" ${i.status === 'done' ? 'selected' : ''}>已完成</option>
@@ -240,7 +195,7 @@
                         </div>
                         <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
                             <button type="button" onclick="app.modals.close()" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">取消</button>
-                            <button type="submit" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/30 transition-all hover:scale-105">
+                            <button type="submit" data-testid="edit-issue-save-button" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/30 transition-all hover:scale-105">
                                 <i class="fa-solid fa-save mr-2"></i>保存更改
                             </button>
                         </div>

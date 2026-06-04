@@ -66,7 +66,7 @@
                             </h1>
                             <p class="mt-2 text-sm text-gray-600">管理和跟踪产品需求</p>
                         </div>
-                        <button onclick="app.modals.createRequirement(${projectId})" class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white text-sm font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all shadow-lg shadow-purple-500/30 transform hover:scale-105">
+                        <button type="button" data-testid="create-requirement-button" onclick="app.modals.createRequirement(${projectId})" class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white text-sm font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all shadow-lg shadow-purple-500/30 transform hover:scale-105">
                             <i class="fa-solid fa-plus"></i>
                             <span>新建需求</span>
                         </button>
@@ -157,7 +157,7 @@
                                 <option value="4">P3-低</option>
                                 <option value="5">P4-最低</option>
                             </select>
-                            <button onclick="app.requirementsFilter(${projectId})" class="px-5 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-medium shadow-sm">
+                            <button type="button" data-testid="requirement-filter-button" onclick="app.requirementsFilter(${projectId})" class="px-5 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-medium shadow-sm">
                                 <i class="fa-solid fa-filter mr-2"></i>筛选
                             </button>
                         </div>
@@ -172,7 +172,7 @@
                                 </div>
                                 <h3 class="text-lg font-semibold text-gray-900 mb-2">暂无需求</h3>
                                 <p class="text-gray-600 mb-4">开始创建第一个需求吧</p>
-                                <button onclick="app.modals.createRequirement(${projectId})" class="px-5 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-medium">
+                                <button type="button" data-testid="create-requirement-empty-button" onclick="app.modals.createRequirement(${projectId})" class="px-5 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-medium">
                                     <i class="fa-solid fa-plus mr-2"></i>新建需求
                                 </button>
                             </div>

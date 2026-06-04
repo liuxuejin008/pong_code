@@ -4,8 +4,10 @@
 
         MiniAgile.views.viewProjectSprints = async function(id) {
             const data = await this.api(`/projects/${id}`);
-            if (!data) {
+            if (!data || data.error) {
                 this.isLoading = false;
+                alert(data?.error || '加载项目失败');
+                this.navigate('dashboard');
                 return;
             }
 
@@ -110,7 +112,7 @@
                                 全部迭代
                             </h1>
                         </div>
-                        <button onclick="app.modals.createSprint(${id})" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-sm transition-all flex items-center gap-2">
+                        <button type="button" data-testid="create-sprint-button" onclick="app.modals.createSprint(${id})" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-sm transition-all flex items-center gap-2">
                             <i class="fa-solid fa-plus"></i>
                             <span>新建</span>
                         </button>
