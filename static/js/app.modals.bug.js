@@ -129,7 +129,7 @@
         const requirements = await this.api(`/projects/${projectId}/requirements`);
         const users = await this.api('/users/search');
 
-        showResizableBugModal(this, `
+        this.modalShow(`
             <div class="pr-1">
                 <div class="mb-6">
                     <h3 class="text-2xl font-bold text-gray-900 mb-2">新建缺陷</h3>
@@ -437,7 +437,7 @@
                             </div>
                         </div>` : '';
 
-        showResizableBugModal(this, `
+        this.modalShow(`
             <div data-bug-edit-modal="1" class="w-full pr-1">
                 <div class="mb-4">
                     <h3 class="text-2xl font-bold text-gray-900 mb-1">编辑缺陷</h3>
@@ -618,8 +618,8 @@
                         <p class="mt-2 text-xs text-gray-500">可只补充说明，也可只贴堆栈或截图；留空则不会提交成功</p>
                     </div>
                     <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                        <button type="button" onclick="app.modals.viewBug(${bug.id})" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">返回详情</button>
-                        <button type="submit" data-testid="add-bug-evidence-submit-button" class="bg-orange-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-orange-700 transition-colors">
+                        <button type="button" onclick="app.modals.viewBug(${bug.id})" class="px-5 py-2.5 bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 text-sm font-semibold rounded-lg transition-colors">返回详情</button>
+                        <button type="submit" data-testid="add-bug-evidence-submit-button" style="background:#ea580c;color:#fff" class="px-6 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-colors">
                             <i class="fa-solid fa-camera mr-2"></i>提交证据
                         </button>
                     </div>
