@@ -57,12 +57,12 @@
                         if (endpoint === '/auth/login') {
                             return await response.json();
                         }
-                        return { error: 'Unauthorized' };
+                        return { error: '未授权，请先登录' };
                     }
                     return await response.json();
                 } catch (err) {
                     console.error('API Error:', err);
-                    return { error: 'Network error or server unreachable' };
+                    return { error: '网络错误或服务器无法连接' };
                 }
             },
 
@@ -71,7 +71,7 @@
                 this.isLoading = true;
                 let timeoutId;
                 const timeoutPromise = new Promise((_, reject) => {
-                    timeoutId = setTimeout(() => reject(new Error('auth status timeout')), 10000);
+                    timeoutId = setTimeout(() => reject(new Error('认证状态获取超时')), 10000);
                 });
                 try {
                     const res = await Promise.race([
@@ -191,27 +191,29 @@
                                     <span class="hidden sm:inline font-semibold">${this.user.username}</span>
                                     <i class="fa-solid fa-chevron-down text-xs text-gray-400"></i>
                                 </button>
-                                <div class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 hidden group-hover:block z-50 overflow-hidden">
-                                    <div class="px-4 py-3 bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200">
-                                        <p class="text-xs text-purple-600 uppercase tracking-wider font-bold mb-1">登录账号</p>
-                                        <p class="text-sm font-semibold text-gray-900">${this.user.username}</p>
-                                        <p class="text-xs text-gray-600">${this.user.email || ''}</p>
-                                    </div>
-                                    <div class="py-2">
-                                        <a href="#" class="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors">
-                                            <i class="fa-solid fa-user w-5 mr-2"></i>
-                                            <span>个人资料</span>
-                                        </a>
-                                        <a href="#" class="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors">
-                                            <i class="fa-solid fa-gear w-5 mr-2"></i>
-                                            <span>设置</span>
-                                        </a>
-                                    </div>
-                                    <div class="border-t border-gray-100 py-2">
-                                        <a href="#" onclick="app.logout()" class="flex items-center px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium">
-                                            <i class="fa-solid fa-arrow-right-from-bracket w-5 mr-2"></i>
-                                            <span>退出登录</span>
-                                        </a>
+                                <div class="absolute right-0 top-full pt-2 w-56 hidden group-hover:block z-50">
+                                    <div class="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
+                                        <div class="px-4 py-3 bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200">
+                                            <p class="text-xs text-purple-600 uppercase tracking-wider font-bold mb-1">登录账号</p>
+                                            <p class="text-sm font-semibold text-gray-900">${this.user.username}</p>
+                                            <p class="text-xs text-gray-600">${this.user.email || ''}</p>
+                                        </div>
+                                        <div class="py-2">
+                                            <a href="#" class="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors">
+                                                <i class="fa-solid fa-user w-5 mr-2"></i>
+                                                <span>个人资料</span>
+                                            </a>
+                                            <a href="#" class="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors">
+                                                <i class="fa-solid fa-gear w-5 mr-2"></i>
+                                                <span>设置</span>
+                                            </a>
+                                        </div>
+                                        <div class="border-t border-gray-100 py-2">
+                                            <a href="#" onclick="app.logout()" class="flex items-center px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium">
+                                                <i class="fa-solid fa-arrow-right-from-bracket w-5 mr-2"></i>
+                                                <span>退出登录</span>
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -224,7 +226,7 @@
 
             renderTopContext() {
                 if (this.currentProject) {
-                    const orgName = this.currentOrg ? this.currentOrg.name : 'Unknown';
+                    const orgName = this.currentOrg ? this.currentOrg.name : '未知';
                     this.topContextHtml = `
                         <div class="flex items-center space-x-2">
                             <span class="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">${orgName[0] || '?'}</span>
@@ -243,7 +245,7 @@
                 } else {
                     this.topContextHtml = `
                         <div class="flex items-center space-x-2">
-                            <i class="fa-solid fa-layer-group text-primary-600"></i>
+                            <i class="fa-solid fa-layer-group text-purple-600"></i>
                             <span class="text-gray-900 font-semibold">Mini-Agile</span>
                         </div>
                     `;

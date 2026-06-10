@@ -48,7 +48,7 @@ def create_app():
 
     @login_manager.unauthorized_handler
     def unauthorized():
-        return jsonify({'error': 'Unauthorized'}), 401
+        return jsonify({'error': '未授权，请先登录'}), 401
 
     from routes import register_blueprints
     register_blueprints(app)

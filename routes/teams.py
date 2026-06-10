@@ -20,7 +20,7 @@ def get_team_details(team_id):
         user_id=current_user.id, organization_id=org.id
     ).first() is not None
     if not is_owner and not is_member:
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     members_data = db.session.query(
         User, team_members.c.role
     ).join(team_members, User.id == team_members.c.user_id).filter(
@@ -97,7 +97,7 @@ def add_team_member(team_id):
         user_id=current_user.id, team_id=team_id, role='leader'
     ).first() is not None
     if not is_owner and not is_leader:
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     data = request.get_json()
     user_id = data.get('user_id')
     if not user_id:

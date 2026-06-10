@@ -24,11 +24,11 @@ def auth_status():
 def login():
     data = request.get_json()
     if not data or 'username' not in data or 'password' not in data:
-        return jsonify({'error': 'Missing credentials'}), 400
+        return jsonify({'error': '请输入用户名和密码'}), 400
 
     user = User.query.filter_by(username=data['username']).first()
     if user is None or not user.check_password(data['password']):
-        return jsonify({'error': 'Invalid username or password'}), 401
+        return jsonify({'error': '用户名或密码错误'}), 401
 
     login_user(user, remember=data.get('remember_me', False))
     return jsonify({'success': True, 'user': user.to_dict()})
@@ -38,18 +38,18 @@ def login():
 def register():
     data = request.get_json()
     if not data or 'username' not in data or 'email' not in data or 'password' not in data:
-        return jsonify({'error': 'Missing data'}), 400
+        return jsonify({'error': '请填写所有必填项'}), 400
 
     if User.query.filter_by(username=data['username']).first():
-        return jsonify({'error': 'Username already exists'}), 400
+        return jsonify({'error': '用户名已存在'}), 400
     if User.query.filter_by(email=data['email']).first():
-        return jsonify({'error': 'Email already exists'}), 400
+        return jsonify({'error': '邮箱已被注册'}), 400
 
     user = User(username=data['username'], email=data['email'])
     user.set_password(data['password'])
     db.session.add(user)
     db.session.commit()
-    return jsonify({'success': True, 'message': 'Registered successfully'})
+    return jsonify({'success': True, 'message': '注册成功'})
 
 
 @bp.route('/logout')

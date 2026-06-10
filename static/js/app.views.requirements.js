@@ -10,7 +10,7 @@
             }
 
             this.currentProject = projectData.project;
-            this.currentOrg = { name: 'Organization' };
+            this.currentOrg = { name: '组织' };
             this.renderSidebar();
             this.renderTopContext();
 

@@ -37,9 +37,9 @@ def get_organizations():
 def create_organization():
     data = request.get_json()
     if not data or 'name' not in data:
-        return jsonify({'error': 'Name is required'}), 400
+        return jsonify({'error': '请输入组织名称'}), 400
     if Organization.query.filter_by(name=data['name']).first():
-        return jsonify({'error': 'Organization name already exists'}), 400
+        return jsonify({'error': '组织名称已存在'}), 400
     org = Organization(name=data['name'], owner_id=current_user.id)
     try:
         db.session.add(org)
@@ -51,10 +51,10 @@ def create_organization():
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
-        return jsonify({'error': 'Database error: Duplicate name or other constraint failed'}), 400
+        return jsonify({'error': '数据库错误：名称重复或其他约束失败'}), 400
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+        return jsonify({'error': f'服务器内部错误：{str(e)}'}), 500
     return jsonify(org.to_dict()), 201
 
 
@@ -103,7 +103,7 @@ def get_organization_details(org_id):
         user_id=current_user.id, organization_id=org_id
     ).first() is not None
     if not is_owner and not is_member:
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     projects = [p.to_dict() for p in org.projects.all()]
     return jsonify({'organization': org.to_dict(), 'projects': projects})
 
@@ -117,7 +117,7 @@ def get_organization_members(org_id):
         user_id=current_user.id, organization_id=org_id
     ).first() is not None
     if not is_owner and not is_member:
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     members_data = db.session.query(
         User, organization_members.c.role
     ).join(
@@ -145,7 +145,7 @@ def get_organization_teams(org_id):
         user_id=current_user.id, organization_id=org_id
     ).first() is not None
     if not is_owner and not is_member:
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     teams = org.teams.all()
     return jsonify({
         'organization': org.to_dict(),
@@ -163,7 +163,7 @@ def create_team(org_id):
         user_id=current_user.id, organization_id=org_id, role='admin'
     ).first() is not None
     if not is_owner and not is_admin:
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     data = request.get_json()
     if not data or 'name' not in data:
         return jsonify({'error': '团队名称不能为空'}), 400

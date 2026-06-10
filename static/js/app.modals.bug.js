@@ -129,7 +129,7 @@
         const requirements = await this.api(`/projects/${projectId}/requirements`);
         const users = await this.api('/users/search');
 
-        showResizableBugModal(this, `
+        this.modalShow(`
             <div class="pr-1">
                 <div class="mb-6">
                     <h3 class="text-2xl font-bold text-gray-900 mb-2">新建缺陷</h3>
@@ -437,7 +437,7 @@
                             </div>
                         </div>` : '';
 
-        showResizableBugModal(this, `
+        this.modalShow(`
             <div data-bug-edit-modal="1" class="w-full pr-1">
                 <div class="mb-4">
                     <h3 class="text-2xl font-bold text-gray-900 mb-1">编辑缺陷</h3>
@@ -446,8 +446,8 @@
 
                 <!-- Tabs -->
                 <div class="flex border-b border-gray-200 mb-6" id="bug-edit-tabs">
-                    <button onclick="document.getElementById('bug-tab-details').classList.remove('hidden'); document.getElementById('bug-tab-time').classList.add('hidden'); this.classList.add('border-red-500', 'text-red-600'); this.classList.remove('border-transparent', 'text-gray-500'); this.nextElementSibling.classList.remove('border-red-500', 'text-red-600'); this.nextElementSibling.classList.add('border-transparent', 'text-gray-500');" class="px-4 py-2 text-sm font-medium ${initialTab === 'time' ? 'text-gray-500 border-b-2 border-transparent' : 'text-red-600 border-b-2 border-red-500'} focus:outline-none transition-colors">详情</button>
-                    <button onclick="document.getElementById('bug-tab-time').classList.remove('hidden'); document.getElementById('bug-tab-details').classList.add('hidden'); this.classList.add('border-red-500', 'text-red-600'); this.classList.remove('border-transparent', 'text-gray-500'); this.previousElementSibling.classList.remove('border-red-500', 'text-red-600'); this.previousElementSibling.classList.add('border-transparent', 'text-gray-500');" class="px-4 py-2 text-sm font-medium ${initialTab === 'time' ? 'text-red-600 border-b-2 border-red-500' : 'text-gray-500 border-b-2 border-transparent'} hover:text-gray-700 focus:outline-none transition-colors">工时</button>
+                    <button onclick="document.getElementById('bug-tab-details').classList.remove('hidden'); document.getElementById('bug-tab-time').classList.add('hidden'); this.classList.add('border-red-500', 'text-red-600'); this.classList.remove('text-gray-500', 'border-transparent'); this.nextElementSibling.classList.remove('border-red-500', 'text-red-600'); this.nextElementSibling.classList.add('text-gray-500', 'border-transparent');" class="px-4 py-2 text-sm font-medium text-red-600 border-b-2 border-red-500 focus:outline-none transition-colors">详情</button>
+                    <button onclick="document.getElementById('bug-tab-time').classList.remove('hidden'); document.getElementById('bug-tab-details').classList.add('hidden'); this.classList.add('border-red-500', 'text-red-600'); this.classList.remove('text-gray-500', 'border-transparent'); this.previousElementSibling.classList.remove('border-red-500', 'text-red-600'); this.previousElementSibling.classList.add('text-gray-500', 'border-transparent');" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent focus:outline-none transition-colors">工时</button>
                 </div>
 
                 <!-- Details Tab -->
@@ -552,11 +552,11 @@
                         <h4 class="text-sm font-bold text-gray-900 mb-3">登记工时</h4>
                         <form onsubmit="app.handlers.submitBugWorkLog(event, ${bug.id})" class="flex flex-col gap-3">
                             <div class="grid grid-cols-2 gap-3">
-                                <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}" class="rounded-lg border-gray-300 text-sm focus:ring-red-500 focus:border-red-500">
-                                <input type="number" name="hours" step="0.25" min="0.25" placeholder="工时 (如 1.5)" required class="rounded-lg border-gray-300 text-sm focus:ring-red-500 focus:border-red-500">
+                                <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm">
+                                <input type="number" name="hours" step="0.25" min="0.25" placeholder="工时 (如 1.5)" required class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm">
                             </div>
-                            <input type="text" name="description" placeholder="工作内容描述" class="rounded-lg border-gray-300 text-sm focus:ring-red-500 focus:border-red-500">
-                            <button type="submit" class="bg-red-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-red-700 transition-colors">记录工时</button>
+                            <textarea name="description" rows="3" placeholder="工作内容描述" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm resize-none"></textarea>
+                            <button type="submit" class="bg-red-600 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-red-700 transition-colors">记录工时</button>
                         </form>
                     </div>
 
@@ -618,8 +618,8 @@
                         <p class="mt-2 text-xs text-gray-500">可只补充说明，也可只贴堆栈或截图；留空则不会提交成功</p>
                     </div>
                     <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                        <button type="button" onclick="app.modals.viewBug(${bug.id})" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">返回详情</button>
-                        <button type="submit" data-testid="add-bug-evidence-submit-button" class="bg-orange-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-orange-700 transition-colors">
+                        <button type="button" onclick="app.modals.viewBug(${bug.id})" class="px-5 py-2.5 bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 text-sm font-semibold rounded-lg transition-colors">返回详情</button>
+                        <button type="submit" data-testid="add-bug-evidence-submit-button" style="background:#ea580c;color:#fff" class="px-6 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-colors">
                             <i class="fa-solid fa-camera mr-2"></i>提交证据
                         </button>
                     </div>

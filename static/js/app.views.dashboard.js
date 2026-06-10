@@ -13,16 +13,16 @@
             const totalDoneTasks = orgs.reduce((sum, org) => sum + (org.done_issues_count || 0), 0);
 
             const orgsHtml = orgs.map(org => `
-                <div class="group block p-6 bg-white rounded-xl border border-gray-200 hover:border-primary-400 hover:shadow-xl hover:shadow-primary-500/10 transition-all duration-200 cursor-pointer relative overflow-hidden" onclick="app.navigate('org_details', {id: ${org.id}})">
+                <div class="group block p-6 bg-white rounded-xl border border-gray-200 hover:border-purple-400 hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-200 cursor-pointer relative overflow-hidden" onclick="app.navigate('org_details', {id: ${org.id}})">
                     <div class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <i class="fa-solid fa-arrow-right text-primary-500"></i>
+                        <i class="fa-solid fa-arrow-right text-purple-500"></i>
                     </div>
                     <div class="flex items-center mb-4">
                         <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white border border-purple-400/20 flex items-center justify-center font-bold text-xl mr-4 shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
                             ${org.name[0].toUpperCase()}
                         </div>
                         <div class="flex-1">
-                             <h5 class="text-lg font-bold tracking-tight text-gray-900 group-hover:text-primary-600 transition-colors">${org.name}</h5>
+                             <h5 class="text-lg font-bold tracking-tight text-gray-900 group-hover:text-purple-600 transition-colors">${org.name}</h5>
                              <div class="text-xs text-gray-500 flex items-center mt-1.5 gap-2">
                                 <span class="inline-flex items-center bg-gray-100 px-2.5 py-1 rounded-md text-gray-700 font-medium">
                                     <i class="fa-solid fa-folder text-[10px] mr-1.5"></i>${org.projects_count} 个项目

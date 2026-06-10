@@ -27,7 +27,7 @@ def create_project(org_id):
         user_id=current_user.id, organization_id=org_id, role='admin'
     ).first() is not None
     if not is_owner and not is_admin:
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     data = request.get_json()
     project = Project(
         name=data.get('name'),
@@ -44,7 +44,7 @@ def create_project(org_id):
 def get_project_details(project_id):
     project = Project.query.get_or_404(project_id)
     if not _check_project_access(project):
-        return jsonify({'error': 'Access denied'}), 403
+        return jsonify({'error': '无权访问'}), 403
     active_sprint = project.sprints.filter_by(status='active').first()
     backlog_issues = project.issues.filter_by(sprint_id=None).all()
     all_sprints = project.sprints.all()

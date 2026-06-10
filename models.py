@@ -167,11 +167,11 @@ class Sprint(db.Model):
         
         # Map DB status to UI friendly status/Chinese if needed, or keep simple
         # For this demo, let's keep English internal but maybe add display label
-        status_label = 'Not Started'
+        status_label = '未开始'
         if self.status == 'active':
-            status_label = 'In Progress'
+            status_label = '进行中'
         elif self.status == 'closed':
-            status_label = 'Completed'
+            status_label = '已完成'
             
         return {
             'id': self.id,

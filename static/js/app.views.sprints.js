@@ -23,7 +23,7 @@
 
             const renderSprintRow = (s) => {
                 let statusBadge = '';
-                let progressColor = 'bg-primary-500';
+                let progressColor = 'bg-purple-500';
                 let statusDot = '';
 
                 if (s.status === 'active') {

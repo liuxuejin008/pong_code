@@ -141,8 +141,8 @@
 
                 <!-- Tabs -->
                 <div class="flex border-b border-gray-200 mb-6" id="edit-tabs">
-                    <button onclick="document.getElementById('tab-details').classList.remove('hidden'); document.getElementById('tab-time').classList.add('hidden'); this.classList.add('border-purple-500', 'text-purple-600'); this.nextElementSibling.classList.remove('border-purple-500', 'text-purple-600');" class="px-4 py-2 text-sm font-medium text-purple-600 border-b-2 border-purple-500 focus:outline-none transition-colors">详情</button>
-                    <button onclick="document.getElementById('tab-time').classList.remove('hidden'); document.getElementById('tab-details').classList.add('hidden'); this.classList.add('border-purple-500', 'text-purple-600'); this.previousElementSibling.classList.remove('border-purple-500', 'text-purple-600');" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent focus:outline-none transition-colors">工时</button>
+                    <button onclick="document.getElementById('tab-details').classList.remove('hidden'); document.getElementById('tab-time').classList.add('hidden'); this.classList.add('border-purple-500', 'text-purple-600'); this.classList.remove('text-gray-500', 'border-transparent'); this.nextElementSibling.classList.remove('border-purple-500', 'text-purple-600'); this.nextElementSibling.classList.add('text-gray-500', 'border-transparent');" class="px-4 py-2 text-sm font-medium text-purple-600 border-b-2 border-purple-500 focus:outline-none transition-colors">详情</button>
+                    <button onclick="document.getElementById('tab-time').classList.remove('hidden'); document.getElementById('tab-details').classList.add('hidden'); this.classList.add('border-purple-500', 'text-purple-600'); this.classList.remove('text-gray-500', 'border-transparent'); this.previousElementSibling.classList.remove('border-purple-500', 'text-purple-600'); this.previousElementSibling.classList.add('text-gray-500', 'border-transparent');" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent focus:outline-none transition-colors">工时</button>
                 </div>
 
                 <!-- Details Tab -->
@@ -205,21 +205,21 @@
                 <!-- Time Tracking Tab -->
                 <div id="tab-time" class="hidden">
                     <div class="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
-                        <h4 class="text-sm font-bold text-gray-900 mb-3">Log Work</h4>
+                        <h4 class="text-sm font-bold text-gray-900 mb-3">登记工时</h4>
                         <form onsubmit="app.handlers.submitWorkLog(event, ${i.id})" class="flex flex-col gap-3">
                             <div class="grid grid-cols-2 gap-3">
-                                <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}" class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500" title="工时日期">
-                                <input type="number" name="hours" step="0.25" min="0.25" placeholder="Hours (e.g. 1.5)" required class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500">
+                                <input type="date" name="date" required value="${new Date().toISOString().split('T')[0]}" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm" title="工时日期">
+                                <input type="number" name="hours" step="0.25" min="0.25" placeholder="工时（如 1.5）" required class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm">
                             </div>
-                            <input type="text" name="description" placeholder="What did you work on?" class="rounded-lg border-gray-300 text-sm focus:ring-purple-500 focus:border-purple-500">
-                            <button type="submit" class="bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-purple-700 transition-colors">Log Time</button>
+                            <textarea name="description" rows="3" placeholder="工作内容描述" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm resize-none"></textarea>
+                            <button type="submit" class="bg-purple-600 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-purple-700 transition-colors">记录工时</button>
                         </form>
                     </div>
 
                     <div class="space-y-3">
                         <h4 class="text-sm font-bold text-gray-900 flex justify-between items-center">
-                            <span>Work History</span>
-                            <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">Total: ${i.time_spent || 0}h</span>
+                            <span>工时记录</span>
+                            <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">总计: ${i.time_spent || 0}h</span>
                         </h4>
                         <div class="max-h-60 overflow-y-auto pr-2 space-y-2">
                             ${logs.length > 0 ? logs.map(log => `
@@ -234,7 +234,7 @@
                                         ${log.hours}h
                                     </div>
                                 </div>
-                            `).join('') : '<div class="text-gray-400 text-sm text-center py-4 italic">No work logged yet.</div>'}
+                            `).join('') : '<div class="text-gray-400 text-sm text-center py-4 italic">暂无工时记录。</div>'}
                         </div>
                     </div>
                 </div>
