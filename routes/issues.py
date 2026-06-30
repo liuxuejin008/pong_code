@@ -25,7 +25,6 @@ def create_issue(project_id):
     project = Project.query.get_or_404(project_id)
     if not _check_project_access(project):
         return jsonify({'error': '无权访问'}), 403
-    active_sprint = project.sprints.filter_by(status='active').first()
     data = request.get_json()
     if not data.get('title'):
         return jsonify({'error': '任务标题为必填项'}), 400
@@ -34,8 +33,13 @@ def create_issue(project_id):
         time_estimate = parse_float(data.get('time_estimate'), 'time_estimate', default=0)
         assignee_id = parse_nullable_int(data.get('assignee_id'), 'assignee_id')
         requirement_id = parse_nullable_int(data.get('requirement_id'), 'requirement_id')
+        sprint_id = parse_nullable_int(data.get('sprint_id'), 'sprint_id')
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
+    if sprint_id is not None:
+        sprint = Sprint.query.filter_by(id=sprint_id, project_id=project_id).first()
+        if not sprint:
+            return jsonify({'error': '未找到该迭代'}), 404
     # 泳道快速创建任务没有负责人输入，默认归属给创建人，便于后续工时按负责人统计。
     if assignee_id is None:
         assignee_id = current_user.id
@@ -47,7 +51,7 @@ def create_issue(project_id):
         status='todo',
         assignee_id=assignee_id,
         project_id=project_id,
-        sprint_id=active_sprint.id if active_sprint else None,
+        sprint_id=sprint_id,
         requirement_id=requirement_id
     )
     db.session.add(issue)
