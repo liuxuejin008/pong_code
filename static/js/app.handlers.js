@@ -246,7 +246,7 @@
         },
 
         // 统一处理创建工作项（任务或缺陷）
-        async handlersSubmitWorkItem(e, projectId) {
+        async handlersSubmitWorkItem(e, projectId, sprintId = null) {
             e.preventDefault();
             const btn = e.target.querySelector('button[type="submit"]');
             const originalText = btn.innerHTML;
@@ -281,7 +281,8 @@
                     expected_result: form.expected_result,
                     actual_result: form.actual_result,
                     environment: form.environment,
-                    requirement_id: form.requirement_id
+                    requirement_id: form.requirement_id,
+                    sprint_id: sprintId
                 };
                 res = await this.api(`/projects/${projectId}/bugs`, 'POST', bugData);
             } else {
@@ -292,7 +293,8 @@
                     priority: parseInt(form.priority) || 3,
                     time_estimate: parseFloat(form.time_estimate) || 0,
                     requirement_id: form.requirement_id,
-                    assignee_id: form.assignee_id
+                    assignee_id: form.assignee_id,
+                    sprint_id: sprintId
                 };
                 res = await this.api(`/projects/${projectId}/issues`, 'POST', issueData);
             }
@@ -300,7 +302,7 @@
             if (res && !res.error) {
                 this.modals.close();
                 if (this.currentView === 'board') {
-                    this.navigate('board', { id: projectId });
+                    this.navigate('board', { id: projectId, ...(sprintId ? { sprintId } : {}) });
                 } else if (itemType === 'bug') {
                     this.navigate('bugs', { id: projectId });
                 } else {

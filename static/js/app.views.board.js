@@ -131,7 +131,7 @@
                                     <span class="text-xs font-medium text-gray-600">${swimlaneProgress}%</span>
                                 </div>
                             </div>
-                            <button onclick="app.modals.createIssue(${id}, ${req ? req.id : 'null'})" class="text-xs text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1 hover:bg-purple-100 px-2 py-1 rounded transition-colors">
+                            <button onclick="app.modals.createIssue(${id}, ${req ? req.id : 'null'}${sprintId ? `, ${sprintId}` : ''})" class="text-xs text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1 hover:bg-purple-100 px-2 py-1 rounded transition-colors">
                                 <i class="fa-solid fa-plus text-[10px]"></i>
                                 <span>添加任务</span>
                             </button>
@@ -219,7 +219,7 @@
                                     <i class="fa-solid fa-rotate text-xs"></i>
                                     <span>刷新</span>
                                 </button>
-                                <button type="button" data-testid="create-issue-button" onclick="app.modals.createIssue(${id})" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-lg shadow-purple-500/30 transition-all hover:scale-105 flex items-center gap-1.5">
+                                <button type="button" data-testid="create-issue-button" onclick="app.modals.createIssue(${id}, null${sprintId ? `, ${sprintId}` : ''})" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-lg shadow-purple-500/30 transition-all hover:scale-105 flex items-center gap-1.5">
                                     <i class="fa-solid fa-plus text-xs"></i>
                                     <span>新建任务</span>
                                 </button>

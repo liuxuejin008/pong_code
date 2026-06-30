@@ -2,9 +2,9 @@
     const MiniAgile = window.MiniAgile = window.MiniAgile || {};
     MiniAgile.modals = MiniAgile.modals || {};
 
-        MiniAgile.modals.modalCreateIssue = async function(projectId, defaultRequirementId = null) {
-            // 获取当前活跃迭代的需求列表
-            const boardData = await this.api(`/projects/${projectId}/board`);
+        MiniAgile.modals.modalCreateIssue = async function(projectId, defaultRequirementId = null, sprintId = null) {
+            // 获取当前迭代的需求列表（带 sprintId 以匹配当前看板所属迭代）
+            const boardData = await this.api(`/projects/${projectId}/board${sprintId ? `?sprint_id=${sprintId}` : ''}`);
             const swimlanes = boardData?.swimlanes || [];
             const requirements = swimlanes
                 .filter(s => s.requirement !== null)
@@ -26,7 +26,7 @@
                     <h3 class="text-2xl font-bold text-gray-900 mb-2" id="create-item-title">创建任务</h3>
                     <p class="text-gray-500 text-sm">向迭代中添加新的工作项</p>
                 </div>
-                <form onsubmit="app.handlers.submitWorkItem(event, ${projectId})" class="space-y-5">
+                <form onsubmit="app.handlers.submitWorkItem(event, ${projectId}, ${sprintId || 'null'})" class="space-y-5">
                     <!-- 工作项类型选择 -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">
@@ -42,7 +42,7 @@
                                 </div>
                             </label>
                             <label class="flex-1 cursor-pointer">
-                                <input type="radio" name="item_type" value="bug" class="hidden peer" onchange="app.modals.close(); app.modals.createBug(${projectId}, document.querySelector('select[name=&quot;requirement_id&quot;]')?.value || null)">
+                                <input type="radio" name="item_type" value="bug" class="hidden peer" onchange="app.modals.close(); app.modals.createBug(${projectId}, document.querySelector('select[name=&quot;requirement_id&quot;]')?.value || null${sprintId ? `, ${sprintId}` : ''})">
                                 <div class="peer-checked:border-red-500 peer-checked:bg-red-50 border-2 border-gray-200 rounded-xl p-4 text-center transition-all hover:border-red-300">
                                     <i class="fa-solid fa-bug text-2xl text-red-600 mb-2"></i>
                                     <div class="text-sm font-semibold text-gray-900">缺陷</div>
