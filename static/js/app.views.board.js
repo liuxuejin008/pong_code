@@ -13,6 +13,13 @@
 
             this.renderSidebar();
 
+            // 从侧边栏入口进入时 sprintId 为空，后端会自动选 active sprint。
+            // 用后端实际返回的 sprint id 回填，避免后续创建任务时 sprint_id 丢失。
+            if (data.has_sprint && data.sprint && data.sprint.id) {
+                sprintId = data.sprint.id;
+                this.currentSprintId = sprintId;
+            }
+
             if (!data.has_sprint) {
                 this.setMain(`
                     <div class="flex flex-col items-center justify-center h-full text-center py-20 m-6">

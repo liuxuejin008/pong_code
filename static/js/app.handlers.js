@@ -302,7 +302,7 @@
             if (res && !res.error) {
                 this.modals.close();
                 if (this.currentView === 'board') {
-                    this.navigate('board', { id: projectId, ...(sprintId ? { sprintId } : {}) });
+                    this.navigate('board', { id: projectId, ...(this.currentSprintId ? { sprintId: this.currentSprintId } : {}) });
                 } else if (itemType === 'bug') {
                     this.navigate('bugs', { id: projectId });
                 } else {
