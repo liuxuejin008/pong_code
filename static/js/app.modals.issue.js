@@ -118,8 +118,12 @@
             const i = data.issue;
             const logs = data.work_logs || [];
             
-            // 获取当前项目的活跃迭代的需求列表
-            const boardData = await this.api(`/projects/${i.project_id}/board`);
+            // 获取当前迭代关联的需求列表（带 sprint_id 以匹配任务所属或当前看板所在迭代）
+            const sprintIdForBoard = i.sprint_id || this.currentSprintId;
+            const boardUrl = sprintIdForBoard
+                ? `/projects/${i.project_id}/board?sprint_id=${sprintIdForBoard}`
+                : `/projects/${i.project_id}/board`;
+            const boardData = await this.api(boardUrl);
             const swimlanes = boardData?.swimlanes || [];
             const requirements = swimlanes
                 .filter(s => s.requirement !== null)

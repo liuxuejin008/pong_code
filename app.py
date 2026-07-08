@@ -9,7 +9,7 @@ from flask import Flask, send_from_directory, jsonify
 from sqlalchemy import inspect
 from sqlalchemy import text
 
-from extensions import db, login_manager
+from extensions import db, login_manager, mail
 
 # 应用根目录（与 app.py 同目录），用于稳定解析 static 路径，避免重启后 403
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -43,8 +43,18 @@ def create_app():
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
     app.config['BUG_EVIDENCE_UPLOAD_DIR'] = os.getenv('BUG_EVIDENCE_UPLOAD_DIR', BUG_EVIDENCE_UPLOAD_DIR)
 
+    app.config['MAIL_SERVER']         = os.getenv('MAIL_SERVER', 'localhost')
+    app.config['MAIL_PORT']           = int(os.getenv('MAIL_PORT', '25'))
+    app.config['MAIL_USE_TLS']        = os.getenv('MAIL_USE_TLS', '0') == '1'
+    app.config['MAIL_USERNAME']       = os.getenv('MAIL_USERNAME')
+    app.config['MAIL_PASSWORD']       = os.getenv('MAIL_PASSWORD')
+    app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'no-reply@mini-agile.local')
+    app.config['RESET_TOKEN_MAX_AGE'] = int(os.getenv('RESET_TOKEN_MAX_AGE', '3600'))
+    app.config['APP_BASE_URL']        = os.getenv('APP_BASE_URL', 'http://localhost:5000')
+
     db.init_app(app)
     login_manager.init_app(app)
+    mail.init_app(app)
 
     @login_manager.unauthorized_handler
     def unauthorized():

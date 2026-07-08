@@ -21,6 +21,7 @@
                 },
                 showModal: false,
                 isLoading: true,
+                resetToken: null,
                 handlers: {},
                 modals: {}
             };
@@ -69,6 +70,15 @@
             // --- Navigation & Auth ---
             async init() {
                 this.isLoading = true;
+
+                const resetToken = new URLSearchParams(location.search).get('reset_token');
+                if (resetToken) {
+                    this.resetToken = resetToken;
+                    history.replaceState(null, '', location.pathname);
+                    this.navigate('reset_password');
+                    return;
+                }
+
                 let timeoutId;
                 const timeoutPromise = new Promise((_, reject) => {
                     timeoutId = setTimeout(() => reject(new Error('认证状态获取超时')), 10000);
@@ -105,9 +115,55 @@
                 document.body.classList.toggle('bg-white', isAuthView);
             },
 
+            toggleResetPasswordVisibility() {
+                const pwd = document.getElementById('reset-password');
+                const confirm = document.getElementById('reset-password-confirm');
+                if (!pwd) return;
+                const show = pwd.type === 'password';
+                pwd.type = show ? 'text' : 'password';
+                if (confirm) confirm.type = show ? 'text' : 'password';
+                document.querySelectorAll('[data-eye-icon]').forEach((el) => {
+                    el.className = show ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+                });
+            },
+
+            showToast(message, type = 'success') {
+                let container = document.getElementById('toast-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'toast-container';
+                    container.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;font-family:inherit;';
+                    document.body.appendChild(container);
+                }
+
+                const styles = {
+                    success: { color: '#16a34a', icon: 'fa-circle-check' },
+                    error:   { color: '#dc2626', icon: 'fa-circle-xmark' },
+                    info:    { color: '#7c3aed', icon: 'fa-circle-info' }
+                };
+                const s = styles[type] || styles.success;
+
+                const toast = document.createElement('div');
+                toast.style.cssText = `pointer-events:auto;display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #f3f4f6;border-left:4px solid ${s.color};border-radius:8px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.12), 0 4px 6px -2px rgba(0,0,0,0.05);padding:12px 16px;min-width:260px;opacity:0;transform:translateX(8px);transition:opacity 0.3s ease, transform 0.3s ease;`;
+                toast.innerHTML = `<i class="fa-solid ${s.icon}" style="color:${s.color};font-size:16px;"></i><span style="font-size:14px;color:#374151;"></span>`;
+                toast.querySelector('span').textContent = message;
+
+                container.appendChild(toast);
+                requestAnimationFrame(() => {
+                    toast.style.opacity = '1';
+                    toast.style.transform = 'translateX(0)';
+                });
+
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateX(8px)';
+                    setTimeout(() => toast.remove(), 320);
+                }, 3000);
+            },
+
             navigate(view, data = {}) {
                 this.currentView = view;
-                this.isLoading = !['login', 'register'].includes(view);
+                this.isLoading = !['login', 'register', 'forgot_password', 'reset_password'].includes(view);
 
                 if (view === 'dashboard') {
                     this.currentProject = null;
@@ -124,6 +180,14 @@
                     case 'register':
                         this.setAuthLayout(true);
                         this.viewRegister();
+                        break;
+                    case 'forgot_password':
+                        this.setAuthLayout(true);
+                        this.viewForgotPassword();
+                        break;
+                    case 'reset_password':
+                        this.setAuthLayout(true);
+                        this.viewResetPassword();
                         break;
                     case 'dashboard':
                         this.setAuthLayout(false);
@@ -454,6 +518,8 @@
             this.handlers = {
                 login: this.handlersLogin.bind(this),
                 register: this.handlersRegister.bind(this),
+                forgotPassword: this.handlersForgotPassword.bind(this),
+                resetPassword: this.handlersResetPassword.bind(this),
                 submitOrg: this.handlersSubmitOrg.bind(this),
                 joinOrg: this.handlersJoinOrg.bind(this),
                 submitProject: this.handlersSubmitProject.bind(this),

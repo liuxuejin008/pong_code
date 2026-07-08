@@ -44,6 +44,66 @@
             }
         },
 
+        async handlersForgotPassword(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = '发送中...';
+
+            const form = Object.fromEntries(new FormData(e.target));
+            const res = await this.api('/auth/forgot-password', 'POST', { email: form.email });
+
+            btn.disabled = false;
+            btn.innerText = originalText;
+
+            if (res && res.success) {
+                alert(res.message || '如果该邮箱已注册，重置链接已发送到该邮箱');
+                this.navigate('login');
+            } else {
+                alert(res?.error || '发送重置链接失败');
+            }
+        },
+
+        async handlersResetPassword(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerText;
+            const form = Object.fromEntries(new FormData(e.target));
+
+            if (!form.password || form.password.length < 6) {
+                alert('密码至少 6 位');
+                return;
+            }
+            if (form.password !== form.password_confirm) {
+                alert('两次输入的密码不一致');
+                return;
+            }
+            if (!this.resetToken) {
+                alert('重置链接已失效，请重新申请');
+                this.navigate('forgot_password');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = '提交中...';
+
+            const res = await this.api('/auth/reset-password', 'POST', {
+                token: this.resetToken,
+                password: form.password
+            });
+
+            if (res && res.success) {
+                this.resetToken = null;
+                alert(res.message || '密码已重置，请使用新密码登录');
+                this.navigate('login');
+            } else {
+                alert(res?.error || '重置失败');
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        },
+
         async handlersSubmitOrg(e) {
             e.preventDefault();
             const btn = e.target.querySelector('button[type="submit"]');
@@ -192,19 +252,13 @@
             const res = await this.api(`/sprints/${sprintId}/worklogs`, 'POST', form);
 
             if (res && !res.error) {
-                await this.modals.editSprint(sprintId);
-                document.getElementById('tab-sprint-details').classList.add('hidden');
-                document.getElementById('tab-sprint-reqs').classList.add('hidden');
-                document.getElementById('tab-sprint-time').classList.remove('hidden');
-                const tabs = document.querySelectorAll('#edit-sprint-tabs button');
-                tabs.forEach(b => { b.classList.remove('border-purple-500', 'text-purple-600'); b.classList.add('text-gray-500', 'border-transparent'); });
-                tabs[2].classList.add('border-purple-500', 'text-purple-600');
-                tabs[2].classList.remove('text-gray-500', 'border-transparent');
+                this.modals.close();
                 if (this.currentView === 'project_sprints') {
                     this.viewProjectSprints(this.currentProject.id);
                 }
+                this.showToast('工时登记成功');
             } else {
-                alert(res?.error || '记录工时失败，请重试');
+                this.showToast(res?.error || '记录工时失败，请重试', 'error');
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
@@ -361,19 +415,13 @@
             const res = await this.api(`/issues/${issueId}/worklogs`, 'POST', form);
 
             if (res && !res.error) {
-                await this.modals.editIssue(issueId);
-                document.getElementById('tab-details').classList.add('hidden');
-                document.getElementById('tab-time').classList.remove('hidden');
-                const tabs = document.querySelectorAll('#edit-tabs button');
-                tabs[0].classList.remove('border-purple-500', 'text-purple-600');
-                tabs[0].classList.add('text-gray-500', 'border-transparent');
-                tabs[1].classList.add('border-purple-500', 'text-purple-600');
-                tabs[1].classList.remove('text-gray-500', 'border-transparent');
+                this.modals.close();
                 if (this.currentView === 'board') {
                     this.viewBoard(this.currentProject.id, this.currentSprintId);
                 }
+                this.showToast('工时登记成功');
             } else {
-                alert(res?.error || '记录工作失败，请重试');
+                this.showToast(res?.error || '记录工作失败，请重试', 'error');
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
@@ -632,14 +680,15 @@
             const res = await this.api(`/bugs/${bugId}/worklogs`, 'POST', form);
 
             if (res && !res.error) {
+                this.modals.close();
                 if (this.currentView === 'board') {
                     this.viewBoard(this.currentProject.id, this.currentSprintId);
                 } else if (this.currentView === 'bugs') {
                     this.viewBugs(this.currentProject.id);
                 }
-                await this.modals.editBug(bugId, 'time');
+                this.showToast('工时登记成功');
             } else {
-                alert(res?.error || '记录工时失败，请重试');
+                this.showToast(res?.error || '记录工时失败，请重试', 'error');
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
