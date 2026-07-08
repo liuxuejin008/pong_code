@@ -252,19 +252,13 @@
             const res = await this.api(`/sprints/${sprintId}/worklogs`, 'POST', form);
 
             if (res && !res.error) {
-                await this.modals.editSprint(sprintId);
-                document.getElementById('tab-sprint-details').classList.add('hidden');
-                document.getElementById('tab-sprint-reqs').classList.add('hidden');
-                document.getElementById('tab-sprint-time').classList.remove('hidden');
-                const tabs = document.querySelectorAll('#edit-sprint-tabs button');
-                tabs.forEach(b => { b.classList.remove('border-purple-500', 'text-purple-600'); b.classList.add('text-gray-500', 'border-transparent'); });
-                tabs[2].classList.add('border-purple-500', 'text-purple-600');
-                tabs[2].classList.remove('text-gray-500', 'border-transparent');
+                this.modals.close();
                 if (this.currentView === 'project_sprints') {
                     this.viewProjectSprints(this.currentProject.id);
                 }
+                this.showToast('工时登记成功');
             } else {
-                alert(res?.error || '记录工时失败，请重试');
+                this.showToast(res?.error || '记录工时失败，请重试', 'error');
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
@@ -421,19 +415,13 @@
             const res = await this.api(`/issues/${issueId}/worklogs`, 'POST', form);
 
             if (res && !res.error) {
-                await this.modals.editIssue(issueId);
-                document.getElementById('tab-details').classList.add('hidden');
-                document.getElementById('tab-time').classList.remove('hidden');
-                const tabs = document.querySelectorAll('#edit-tabs button');
-                tabs[0].classList.remove('border-purple-500', 'text-purple-600');
-                tabs[0].classList.add('text-gray-500', 'border-transparent');
-                tabs[1].classList.add('border-purple-500', 'text-purple-600');
-                tabs[1].classList.remove('text-gray-500', 'border-transparent');
+                this.modals.close();
                 if (this.currentView === 'board') {
                     this.viewBoard(this.currentProject.id, this.currentSprintId);
                 }
+                this.showToast('工时登记成功');
             } else {
-                alert(res?.error || '记录工作失败，请重试');
+                this.showToast(res?.error || '记录工作失败，请重试', 'error');
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
@@ -692,14 +680,15 @@
             const res = await this.api(`/bugs/${bugId}/worklogs`, 'POST', form);
 
             if (res && !res.error) {
+                this.modals.close();
                 if (this.currentView === 'board') {
                     this.viewBoard(this.currentProject.id, this.currentSprintId);
                 } else if (this.currentView === 'bugs') {
                     this.viewBugs(this.currentProject.id);
                 }
-                await this.modals.editBug(bugId, 'time');
+                this.showToast('工时登记成功');
             } else {
-                alert(res?.error || '记录工时失败，请重试');
+                this.showToast(res?.error || '记录工时失败，请重试', 'error');
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }

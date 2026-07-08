@@ -127,6 +127,40 @@
                 });
             },
 
+            showToast(message, type = 'success') {
+                let container = document.getElementById('toast-container');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'toast-container';
+                    container.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;font-family:inherit;';
+                    document.body.appendChild(container);
+                }
+
+                const styles = {
+                    success: { color: '#16a34a', icon: 'fa-circle-check' },
+                    error:   { color: '#dc2626', icon: 'fa-circle-xmark' },
+                    info:    { color: '#7c3aed', icon: 'fa-circle-info' }
+                };
+                const s = styles[type] || styles.success;
+
+                const toast = document.createElement('div');
+                toast.style.cssText = `pointer-events:auto;display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #f3f4f6;border-left:4px solid ${s.color};border-radius:8px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.12), 0 4px 6px -2px rgba(0,0,0,0.05);padding:12px 16px;min-width:260px;opacity:0;transform:translateX(8px);transition:opacity 0.3s ease, transform 0.3s ease;`;
+                toast.innerHTML = `<i class="fa-solid ${s.icon}" style="color:${s.color};font-size:16px;"></i><span style="font-size:14px;color:#374151;"></span>`;
+                toast.querySelector('span').textContent = message;
+
+                container.appendChild(toast);
+                requestAnimationFrame(() => {
+                    toast.style.opacity = '1';
+                    toast.style.transform = 'translateX(0)';
+                });
+
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateX(8px)';
+                    setTimeout(() => toast.remove(), 320);
+                }, 3000);
+            },
+
             navigate(view, data = {}) {
                 this.currentView = view;
                 this.isLoading = !['login', 'register', 'forgot_password', 'reset_password'].includes(view);
