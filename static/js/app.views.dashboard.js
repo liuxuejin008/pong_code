@@ -143,6 +143,9 @@
                 return;
             }
             this.currentOrg = data.organization;
+            this.currentProject = null;
+            this.currentTeam = null;
+            this.currentSprintId = null;
             this.renderTopContext();
 
             const projectsHtml = data.projects.map(p => `

@@ -11,6 +11,8 @@
 
         this.currentOrg = null;
         this.currentProject = null;
+        this.currentTeam = null;
+        this.currentSprintId = null;
         this.renderTopContext();
 
         const orgsHtml = orgs.map(org => `
@@ -119,6 +121,9 @@
         }
 
         this.currentOrg = data.organization;
+        this.currentProject = null;
+        this.currentTeam = null;
+        this.currentSprintId = null;
         this.renderTopContext();
 
         const getRoleBadge = (member) => {

@@ -50,6 +50,7 @@ def get_project_details(project_id):
     all_sprints = project.sprints.all()
     return jsonify({
         'project': project.to_dict(),
+        'organization': project.organization.to_dict(),
         'active_sprint': active_sprint.to_dict() if active_sprint else None,
         'sprints': [s.to_dict() for s in all_sprints],
         'backlog': [i.to_dict() for i in backlog_issues]

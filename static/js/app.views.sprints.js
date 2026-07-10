@@ -12,6 +12,9 @@
             }
 
             this.currentProject = data.project;
+            this.currentOrg = data.organization || (data.project?.organization_id ? { id: data.project.organization_id, name: '组织' } : null);
+            this.currentTeam = null;
+            this.currentSprintId = null;
             this.renderTopContext();
             this.renderSidebar();
 

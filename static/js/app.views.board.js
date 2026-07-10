@@ -11,7 +11,13 @@
                 return;
             }
 
+            this.currentProject = data.project || this.currentProject || { id };
+            this.currentOrg = data.organization || this.currentOrg || (this.currentProject?.organization_id ? { id: this.currentProject.organization_id, name: '组织' } : null);
+            this.currentTeam = null;
             this.renderSidebar();
+            if (this.renderTopContext) {
+                this.renderTopContext();
+            }
 
             // 从侧边栏入口进入时 sprintId 为空，后端会自动选 active sprint。
             // 用后端实际返回的 sprint id 回填，避免后续创建任务时 sprint_id 丢失。

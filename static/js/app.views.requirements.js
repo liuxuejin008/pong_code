@@ -10,7 +10,8 @@
             }
 
             this.currentProject = projectData.project;
-            this.currentOrg = { name: '组织' };
+            this.currentOrg = projectData.organization || projectData.project.organization || (projectData.project.organization_id ? { id: projectData.project.organization_id, name: '组织' } : null);
+            this.currentTeam = null;
             this.renderSidebar();
             this.renderTopContext();
 

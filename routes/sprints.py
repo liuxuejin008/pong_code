@@ -172,7 +172,12 @@ def get_board(project_id):
     else:
         target_sprint = project.sprints.filter_by(status='active').first()
     if not target_sprint:
-        return jsonify({'error': '没有活跃的迭代', 'has_sprint': False})
+        return jsonify({
+            'error': '没有活跃的迭代',
+            'has_sprint': False,
+            'project': project.to_dict(),
+            'organization': project.organization.to_dict()
+        })
     requirements = Requirement.query.filter_by(sprint_id=target_sprint.id).order_by(Requirement.priority).all()
     all_issues = target_sprint.issues.all()
     all_bugs = Bug.query.filter(
@@ -219,6 +224,8 @@ def get_board(project_id):
     })
     return jsonify({
         'has_sprint': True,
+        'project': project.to_dict(),
+        'organization': project.organization.to_dict(),
         'sprint': target_sprint.to_dict(),
         'swimlanes': swimlanes
     })
