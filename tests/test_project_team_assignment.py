@@ -31,6 +31,13 @@ class ProjectTeamAssignmentApiTestCase(unittest.TestCase):
         self.assertEqual(team.status_code, 201)
         self.team_id = team.get_json()['id']
 
+        project = self.client.post(
+            f'/api/organizations/{self.org_id}/projects',
+            json={'name': 'Original project', 'description': 'Original description', 'team_id': self.team_id},
+        )
+        self.assertEqual(project.status_code, 201)
+        self.project_id = project.get_json()['id']
+
     def tearDown(self):
         self.app_module.db.session.remove()
         self.context.pop()
@@ -76,6 +83,61 @@ class ProjectTeamAssignmentApiTestCase(unittest.TestCase):
         detail_payload = org_detail.get_json()
         self.assertEqual(detail_payload['projects'][0]['team_name'], 'Alpha')
         self.assertEqual(detail_payload['teams'][0]['name'], 'Alpha')
+
+    def test_owner_updates_project_basic_information(self):
+        second_team = self.client.post(
+            f'/api/organizations/{self.org_id}/teams',
+            json={'name': 'Beta', 'description': 'second team'},
+        )
+        self.assertEqual(second_team.status_code, 201)
+
+        response = self.client.put(
+            f'/api/projects/{self.project_id}',
+            json={
+                'name': 'Updated project',
+                'description': 'Updated description',
+                'team_id': second_team.get_json()['id'],
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload['name'], 'Updated project')
+        self.assertEqual(payload['description'], 'Updated description')
+        self.assertEqual(payload['team_name'], 'Beta')
+
+    def test_project_update_rejects_team_from_another_organization(self):
+        other_org = self.client.post('/api/organizations', json={'name': f'Other-{uuid4().hex[:8]}'})
+        other_team = self.client.post(
+            f"/api/organizations/{other_org.get_json()['id']}/teams",
+            json={'name': 'Other team'},
+        )
+
+        response = self.client.put(
+            f'/api/projects/{self.project_id}',
+            json={'name': 'Updated project', 'team_id': other_team.get_json()['id']},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('有效团队', response.get_json()['error'])
+
+    def test_regular_member_cannot_update_project(self):
+        models = importlib.import_module('models')
+        self.client.post('/api/auth/logout')
+        member_id = self._register_and_login('member')
+        self.app_module.db.session.execute(models.organization_members.insert().values(
+            user_id=member_id,
+            organization_id=self.org_id,
+            role='member',
+        ))
+        self.app_module.db.session.commit()
+
+        response = self.client.put(
+            f'/api/projects/{self.project_id}',
+            json={'name': 'Unauthorized update', 'team_id': self.team_id},
+        )
+
+        self.assertEqual(response.status_code, 403)
 
 
 if __name__ == '__main__':

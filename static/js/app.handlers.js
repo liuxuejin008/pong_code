@@ -197,6 +197,26 @@
             }
         },
 
+        async handlersUpdateProject(e, projectId, orgId) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>保存中...';
+
+            const form = Object.fromEntries(new FormData(e.target));
+            const res = await this.api(`/projects/${projectId}`, 'PUT', form);
+            if (res && !res.error) {
+                this.modals.close();
+                this.showToast('项目已更新');
+                this.navigate('org_details', { id: orgId });
+            } else {
+                alert(res?.error || '更新项目失败，请重试');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        },
+
         async handlersSubmitSprint(e, projectId) {
             e.preventDefault();
             const btn = e.target.querySelector('button[type="submit"]');

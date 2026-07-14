@@ -131,6 +131,36 @@ test('创建项目弹窗：关键主字段具备稳定且唯一的 data-testid',
     assert.equal(countTestId(createProjectModalHtml, 'create-project-submit-button'), 1, '创建项目提交按钮 test id 应唯一');
 });
 
+test('编辑项目弹窗：预填基本信息并提供稳定的 data-testid', async () => {
+    const context = baseContext();
+    loadScript('static/js/app.modals.org.js', context);
+    let editProjectModalHtml = '';
+    const fakeContext = {
+        async api(url) {
+            if (url === '/organizations/42/teams') {
+                return { teams: [{ id: 7, name: '研发团队' }, { id: 8, name: '产品团队' }] };
+            }
+            return null;
+        },
+        modalShow(html) { editProjectModalHtml = html; },
+        escapeHtml
+    };
+
+    await context.window.MiniAgile.modals.modalEditProject.call(fakeContext, {
+        id: 9,
+        name: '项目甲',
+        description: '项目描述',
+        team_id: 7
+    }, 42);
+
+    assert.equal(countTestId(editProjectModalHtml, 'edit-project-name-input'), 1);
+    assert.equal(countTestId(editProjectModalHtml, 'edit-project-team-select'), 1);
+    assert.equal(countTestId(editProjectModalHtml, 'edit-project-description-input'), 1);
+    assert.equal(countTestId(editProjectModalHtml, 'edit-project-submit-button'), 1);
+    assert.match(editProjectModalHtml, /value="项目甲"/);
+    assert.match(editProjectModalHtml, /value="7" selected/);
+});
+
 test('组织列表页：页头入口唯一，空态入口使用独立 test id', async () => {
     const context = baseContext();
     loadScript('static/js/app.views.org.js', context);

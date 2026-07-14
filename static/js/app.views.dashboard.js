@@ -191,9 +191,14 @@
                                 </span>
                             </div>
                             ${data.can_manage_projects ? `
-                                <button type="button" data-testid="delete-project-button" aria-label="删除项目 ${projectName}" title="删除项目" onclick='event.stopPropagation(); app.handlers.deleteProject(${p.id}, ${id}, ${JSON.stringify(p.name).replace(/'/g, "\\u0027")})' class="w-8 h-8 shrink-0 rounded-lg bg-gray-100 hover:bg-red-100 text-gray-500 hover:text-red-700 flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
+                                <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                    <button type="button" data-testid="edit-project-button" aria-label="编辑项目 ${projectName}" title="编辑项目" onclick='event.stopPropagation(); app.modals.editProject(${JSON.stringify(p).replace(/'/g, "\\u0027")}, ${id})' class="w-8 h-8 shrink-0 rounded-lg bg-gray-100 hover:bg-purple-100 text-gray-500 hover:text-purple-700 flex items-center justify-center transition-colors">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
+                                    <button type="button" data-testid="delete-project-button" aria-label="删除项目 ${projectName}" title="删除项目" onclick='event.stopPropagation(); app.handlers.deleteProject(${p.id}, ${id}, ${JSON.stringify(p.name).replace(/'/g, "\\u0027")})' class="w-8 h-8 shrink-0 rounded-lg bg-gray-100 hover:bg-red-100 text-gray-500 hover:text-red-700 flex items-center justify-center transition-colors">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
                             ` : ''}
                         </div>
                     </div>

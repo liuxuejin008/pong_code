@@ -1,4 +1,4 @@
-"""项目相关 API：创建项目、项目详情与删除项目。"""
+"""项目相关 API：创建、查看、更新与删除项目。"""
 
 import os
 
@@ -92,6 +92,32 @@ def get_project_details(project_id):
         'sprints': [s.to_dict() for s in all_sprints],
         'backlog': [i.to_dict() for i in backlog_issues]
     })
+
+
+@bp.route('/projects/<int:project_id>', methods=['PUT'])
+@login_required
+def update_project(project_id):
+    project = Project.query.get_or_404(project_id)
+    if not _check_project_admin(project):
+        return jsonify({'error': '无权编辑项目'}), 403
+
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'error': '请输入项目名称'}), 400
+    try:
+        team_id = int(data.get('team_id') or 0)
+    except (TypeError, ValueError):
+        return jsonify({'error': '请选择团队'}), 400
+    team = Team.query.filter_by(id=team_id, organization_id=project.organization_id).first()
+    if not team:
+        return jsonify({'error': '请选择有效团队'}), 400
+
+    project.name = name
+    project.description = (data.get('description') or '').strip()
+    project.team_id = team.id
+    db.session.commit()
+    return jsonify(project.to_dict())
 
 
 @bp.route('/projects/<int:project_id>', methods=['DELETE'])

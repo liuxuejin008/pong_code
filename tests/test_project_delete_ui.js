@@ -15,6 +15,18 @@ test('organization project cards expose an admin-only delete control', () => {
     assert.match(dashboard, /flex items-center justify-between gap-3 pt-4 border-t/);
 });
 
+test('organization project cards expose edit immediately before delete', () => {
+    assert.match(dashboard, /data-testid="edit-project-button"/);
+    assert.ok(
+        dashboard.indexOf('data-testid="edit-project-button"') < dashboard.indexOf('data-testid="delete-project-button"'),
+        '编辑按钮应位于删除按钮左侧'
+    );
+    assert.match(dashboard, /app\.modals\.editProject/);
+    assert.match(handlers, /api\(`\/projects\/\$\{projectId\}`[^\n]*'PUT'/);
+    assert.match(core, /updateProject: this\.handlersUpdateProject\.bind\(this\)/);
+    assert.match(core, /editProject: this\.modalEditProject\.bind\(this\)/);
+});
+
 test('project deletion warns about cascading data and refreshes the organization', () => {
     assert.match(handlers, /迭代、任务、需求和缺陷也会被永久删除/);
     assert.match(handlers, /api\(`\/projects\/\$\{projectId\}`[^\n]*'DELETE'/);
