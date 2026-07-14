@@ -50,7 +50,12 @@
                 
                 return `
                 <div class="bg-white p-3 rounded-lg border ${isBug ? 'border-red-200 hover:border-red-400' : 'border-gray-200 hover:border-purple-300'} shadow-sm cursor-move hover:shadow-md transition-all duration-200 group relative" data-id="${i.id}" data-item-type="${i.item_type || 'task'}" data-requirement-id="${i.requirement_id || ''}" ondblclick="${isBug ? `app.modals.editBug(${i.id})` : `app.modals.editIssue(${i.id})`}">
-                    <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div class="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        ${!isBug ? `
+                            <button type="button" data-action="quick-log-work" title="登记工时" aria-label="为任务 ${i.title} 登记工时" onclick="event.stopPropagation(); app.modals.editIssue(${i.id}, 'time');" class="w-5 h-5 bg-purple-50 hover:bg-purple-100 rounded flex items-center justify-center text-purple-600 text-xs">
+                                <i class="fa-regular fa-clock text-[10px]"></i>
+                            </button>
+                        ` : ''}
                         <button onclick="${isBug ? `app.modals.editBug(${i.id})` : `app.modals.editIssue(${i.id})`}; event.stopPropagation();" class="w-5 h-5 ${isBug ? 'bg-red-50 hover:bg-red-100' : 'bg-gray-100 hover:bg-gray-200'} rounded flex items-center justify-center text-gray-500 text-xs">
                             <i class="fa-solid fa-pen text-[10px]"></i>
                         </button>
@@ -59,7 +64,7 @@
                     <div class="mb-2">
                         <div class="flex items-center gap-1.5 mb-1">
                             ${isBug ? `<i class="fa-solid fa-bug text-red-500 text-[10px]"></i>` : ''}
-                            <h4 class="text-xs font-semibold text-gray-900 leading-tight pr-5 ${isBug ? 'group-hover:text-red-700' : 'group-hover:text-purple-700'} transition-colors line-clamp-2">${i.title}</h4>
+                            <h4 class="text-xs font-semibold text-gray-900 leading-tight ${isBug ? 'pr-5 group-hover:text-red-700' : 'pr-12 group-hover:text-purple-700'} transition-colors line-clamp-2">${i.title}</h4>
                         </div>
                     </div>
 

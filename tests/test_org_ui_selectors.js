@@ -388,8 +388,24 @@ test('看板：泳道容器使用唯一 test id，列通过局部作用域和 da
                     swimlanes: [
                         {
                             requirement: { id: 10, title: '需求A', priority: 2 },
-                            todo: [],
-                            doing: [],
+                            todo: [{
+                                id: 21,
+                                item_type: 'task',
+                                title: '快捷登记任务',
+                                priority: 3,
+                                time_spent: 1,
+                                time_estimate: 4,
+                                assignee_name: '测试员'
+                            }],
+                            doing: [{
+                                id: 22,
+                                item_type: 'bug',
+                                title: '示例缺陷',
+                                severity: 3,
+                                time_spent: 0,
+                                time_estimate: 2,
+                                reporter_name: '报告人'
+                            }],
                             done: []
                         },
                         {
@@ -419,6 +435,47 @@ test('看板：泳道容器使用唯一 test id，列通过局部作用域和 da
     assert.equal(countTestId(boardHtml, 'board-column-doing'), 0, '列级别不应再复用相同 test id');
     assert.equal(countTestId(boardHtml, 'board-column-done'), 0, '列级别不应再复用相同 test id');
     assert.match(boardHtml, /data-testid="board-swimlane-req-10"[\s\S]*data-status="todo"/, '应可在泳道作用域内通过 data-status 选待办列');
+    assert.equal((boardHtml.match(/data-action="quick-log-work"/g) || []).length, 1, '仅任务卡片应显示工时登记快捷按钮');
+    assert.match(boardHtml, /app\.modals\.editIssue\(21, 'time'\)/, '快捷按钮应直接打开任务工时页签');
+});
+
+test('编辑任务弹窗：支持直接打开工时页签', async () => {
+    const context = baseContext();
+    loadScript('static/js/app.modals.issue.js', context);
+    let modalHtml = '';
+    const fakeContext = {
+        currentSprintId: 1,
+        async api(url) {
+            if (url === '/issues/21') {
+                return {
+                    issue: {
+                        id: 21,
+                        project_id: 7,
+                        sprint_id: 1,
+                        title: '快捷登记任务',
+                        description: '',
+                        priority: 3,
+                        status: 'doing',
+                        assignee_id: null,
+                        requirement_id: null,
+                        time_estimate: 4,
+                        time_spent: 1
+                    },
+                    work_logs: []
+                };
+            }
+            if (url.includes('/projects/7/board')) return { swimlanes: [] };
+            if (url === '/users/search') return [];
+            return null;
+        },
+        modalShow(html) { modalHtml = html; }
+    };
+
+    await context.window.MiniAgile.modals.modalEditIssue.call(fakeContext, 21, 'time');
+
+    assert.match(modalHtml, /id="tab-details" class="hidden"/);
+    assert.match(modalHtml, /id="tab-time" class=""/);
+    assert.match(modalHtml, /记录工时/);
 });
 
 test('缺陷列表、新建缺陷弹窗与详情证据区：关键锚点', async () => {

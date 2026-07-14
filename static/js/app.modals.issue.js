@@ -112,7 +112,7 @@
             `);
         };
 
-        MiniAgile.modals.modalEditIssue = async function(issueId) {
+        MiniAgile.modals.modalEditIssue = async function(issueId, initialTab = 'details') {
             const data = await this.api(`/issues/${issueId}`);
             if (!data || !data.issue) return;
             const i = data.issue;
@@ -145,12 +145,12 @@
 
                 <!-- Tabs -->
                 <div class="flex border-b border-gray-200 mb-6" id="edit-tabs">
-                    <button onclick="document.getElementById('tab-details').classList.remove('hidden'); document.getElementById('tab-time').classList.add('hidden'); this.classList.add('border-purple-500', 'text-purple-600'); this.classList.remove('text-gray-500', 'border-transparent'); this.nextElementSibling.classList.remove('border-purple-500', 'text-purple-600'); this.nextElementSibling.classList.add('text-gray-500', 'border-transparent');" class="px-4 py-2 text-sm font-medium text-purple-600 border-b-2 border-purple-500 focus:outline-none transition-colors">详情</button>
-                    <button onclick="document.getElementById('tab-time').classList.remove('hidden'); document.getElementById('tab-details').classList.add('hidden'); this.classList.add('border-purple-500', 'text-purple-600'); this.classList.remove('text-gray-500', 'border-transparent'); this.previousElementSibling.classList.remove('border-purple-500', 'text-purple-600'); this.previousElementSibling.classList.add('text-gray-500', 'border-transparent');" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent focus:outline-none transition-colors">工时</button>
+                    <button onclick="document.getElementById('tab-details').classList.remove('hidden'); document.getElementById('tab-time').classList.add('hidden'); this.classList.add('border-purple-500', 'text-purple-600'); this.classList.remove('text-gray-500', 'border-transparent'); this.nextElementSibling.classList.remove('border-purple-500', 'text-purple-600'); this.nextElementSibling.classList.add('text-gray-500', 'border-transparent');" class="px-4 py-2 text-sm font-medium ${initialTab === 'time' ? 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent' : 'text-purple-600 border-b-2 border-purple-500'} focus:outline-none transition-colors">详情</button>
+                    <button onclick="document.getElementById('tab-time').classList.remove('hidden'); document.getElementById('tab-details').classList.add('hidden'); this.classList.add('border-purple-500', 'text-purple-600'); this.classList.remove('text-gray-500', 'border-transparent'); this.previousElementSibling.classList.remove('border-purple-500', 'text-purple-600'); this.previousElementSibling.classList.add('text-gray-500', 'border-transparent');" class="px-4 py-2 text-sm font-medium ${initialTab === 'time' ? 'text-purple-600 border-b-2 border-purple-500' : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'} focus:outline-none transition-colors">工时</button>
                 </div>
 
                 <!-- Details Tab -->
-                <div id="tab-details">
+                <div id="tab-details" class="${initialTab === 'time' ? 'hidden' : ''}">
                     <form onsubmit="app.handlers.updateIssue(event, ${i.id})" class="space-y-5">
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">任务标题</label>
@@ -212,7 +212,7 @@
                 </div>
 
                 <!-- Time Tracking Tab -->
-                <div id="tab-time" class="hidden">
+                <div id="tab-time" class="${initialTab === 'time' ? '' : 'hidden'}">
                     <div class="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
                         <h4 class="text-sm font-bold text-gray-900 mb-3">登记工时</h4>
                         <form onsubmit="app.handlers.submitWorkLog(event, ${i.id})" class="flex flex-col gap-3">
