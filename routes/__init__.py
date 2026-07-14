@@ -1,4 +1,4 @@
-# Mini-Agile API 路由包
+# PongCode API 路由包
 # 按领域划分：auth / organizations / teams / projects / sprints / issues / requirements / bugs
 
 from .auth import bp as auth_bp

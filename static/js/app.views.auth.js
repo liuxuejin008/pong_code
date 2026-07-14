@@ -10,7 +10,7 @@
                         <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-purple-600 text-white mb-4 shadow-lg shadow-purple-500/30">
                             <i class="fa-solid fa-bolt text-xl"></i>
                         </div>
-                        <h2 class="text-2xl font-bold leading-9 tracking-tight text-gray-900">登录 Mini-Agile</h2>
+                        <h2 class="text-2xl font-bold leading-9 tracking-tight text-gray-900">登录 PongCode</h2>
                         <p class="mt-2 text-sm text-gray-500">专注管理您的项目</p>
                     </div>
 
@@ -50,7 +50,7 @@
                   <div class="sm:mx-auto sm:w-full sm:max-w-md bg-white p-10 rounded-xl shadow-xl border border-gray-100">
                     <div class="text-center mb-8">
                         <h2 class="text-2xl font-bold leading-9 tracking-tight text-gray-900">创建您的账号</h2>
-                        <p class="mt-2 text-sm text-gray-500">立即加入 Mini-Agile</p>
+                        <p class="mt-2 text-sm text-gray-500">立即加入 PongCode</p>
                     </div>
 
                     <form class="space-y-5" onsubmit="app.handlers.register(event)">

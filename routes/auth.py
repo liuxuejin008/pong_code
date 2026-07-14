@@ -3,7 +3,8 @@
 import sys
 
 from flask import Blueprint, request, jsonify, current_app
-from flask_login import login_user, logout_user, current_user
+from flask_login import login_user, logout_user, current_user, login_required
+from sqlalchemy.exc import IntegrityError
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from flask_mail import Message
 
@@ -11,6 +12,13 @@ from extensions import db, mail
 from models import User
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+
+
+def _valid_email(email):
+    if len(email) > 120 or email.count('@') != 1:
+        return False
+    local_part, domain = email.rsplit('@', 1)
+    return bool(local_part and domain and '.' in domain and not domain.startswith('.') and not domain.endswith('.'))
 
 
 def _serializer():
@@ -33,13 +41,13 @@ def _send_reset_email(user, token):
 
     if current_app.config.get('MAIL_USERNAME') and current_app.config.get('MAIL_PASSWORD'):
         html = (
-            f"<h3>Mini-Agile 密码重置</h3>"
+            f"<h3>PongCode 密码重置</h3>"
             f"<p>您（或他人）为账号 <strong>{user.username}</strong> 申请了密码重置。</p>"
             f"<p>请点击下方链接设置新密码：</p>"
             f"<p><a href=\"{reset_url}\">{reset_url}</a></p>"
             f"<p>链接 {minutes} 分钟内有效。如非本人操作请忽略此邮件。</p>"
         )
-        msg = Message('Mini-Agile 密码重置', recipients=[user.email], html=html)
+        msg = Message('PongCode 密码重置', recipients=[user.email], html=html)
         mail.send(msg)
     else:
         print(f'[DEV RESET LINK] {reset_url}', file=sys.stderr)
@@ -54,6 +62,53 @@ def auth_status():
     )
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
     return resp
+
+
+@bp.route('/profile', methods=['GET', 'PUT'])
+@login_required
+def profile():
+    if request.method == 'GET':
+        return jsonify({'user': current_user.to_dict()})
+
+    data = request.get_json(silent=True) or {}
+    raw_username = data.get('username')
+    raw_email = data.get('email')
+    if not isinstance(raw_username, str) or not isinstance(raw_email, str):
+        return jsonify({'error': '用户名和邮箱格式不正确'}), 400
+
+    username = raw_username.strip()
+    email = raw_email.strip().lower()
+
+    if not username or not email:
+        return jsonify({'error': '用户名和邮箱不能为空'}), 400
+    if len(username) > 64:
+        return jsonify({'error': '用户名不能超过 64 个字符'}), 400
+    if not _valid_email(email):
+        return jsonify({'error': '请输入有效的邮箱地址'}), 400
+
+    username_owner = User.query.filter(
+        db.func.lower(User.username) == username.lower(),
+        User.id != current_user.id,
+    ).first()
+    if username_owner:
+        return jsonify({'error': '用户名已存在'}), 400
+
+    email_owner = User.query.filter(
+        db.func.lower(User.email) == email,
+        User.id != current_user.id,
+    ).first()
+    if email_owner:
+        return jsonify({'error': '邮箱已被注册'}), 400
+
+    current_user.username = username
+    current_user.email = email
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': '用户名或邮箱已被使用'}), 400
+
+    return jsonify({'success': True, 'user': current_user.to_dict()})
 
 
 @bp.route('/login', methods=['POST'])

@@ -99,13 +99,20 @@ def join_organization():
 def get_organization_details(org_id):
     org = Organization.query.get_or_404(org_id)
     is_owner = org.owner_id == current_user.id
-    is_member = db.session.query(organization_members).filter_by(
+    membership = db.session.query(organization_members).filter_by(
         user_id=current_user.id, organization_id=org_id
-    ).first() is not None
+    ).first()
+    is_member = membership is not None
     if not is_owner and not is_member:
         return jsonify({'error': '无权访问'}), 403
     projects = [p.to_dict() for p in org.projects.all()]
-    return jsonify({'organization': org.to_dict(), 'projects': projects})
+    teams = [t.to_dict() for t in org.teams.all()]
+    return jsonify({
+        'organization': org.to_dict(),
+        'projects': projects,
+        'teams': teams,
+        'can_manage_projects': is_owner or (membership is not None and membership.role == 'admin')
+    })
 
 
 @bp.route('/<int:org_id>/members', methods=['GET'])

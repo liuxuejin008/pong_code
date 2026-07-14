@@ -76,6 +76,10 @@ class TestProjectVisibilityAndPermissionsE2E(unittest.TestCase):
             ui_a.open_org(org_name)
             org_id = ui_a.get_current_org_id()
 
+            ui_a.open_teams_for_org(org_id)
+            ui_a.create_team(team_name, "e2e")
+            team_id = ui_a.fetch_last_team_id(org_id)
+            ui_a.open_org(org_name)
             ui_a.create_project(project_name, "e2e desc")
             ui_a.open_project_from_org(project_name)
 
@@ -100,10 +104,6 @@ class TestProjectVisibilityAndPermissionsE2E(unittest.TestCase):
             ui_a.create_bug(bug_title)
 
             ui_a.go_dashboard_from_sidebar()
-            ui_a.open_teams_for_org(org_id)
-            ui_a.create_team(team_name, "e2e")
-
-            team_id = ui_a.fetch_last_team_id(org_id)
             project_id = ui_a.fetch_last_project_id(org_id)
 
             self.assertIn("注册成功", ui_b.register(user_b, email_b, E2E_PASSWORD))

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is **Mini-Agile**, a lightweight Agile project management tool with a Flask backend and vanilla JavaScript SPA frontend. It provides organizations, projects, sprints, and Kanban board functionality.
+This is **PongCode**, a lightweight Agile project management tool with a Flask backend and vanilla JavaScript SPA frontend. It provides organizations, projects, sprints, and Kanban board functionality.
 
 ### Tech Stack
 - **Backend**: Flask 3.0 + Flask-SQLAlchemy + Flask-Login

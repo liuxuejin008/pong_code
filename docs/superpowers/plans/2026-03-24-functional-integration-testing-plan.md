@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 为当前 Mini-Agile 项目补齐一套可在本地重复执行的完整功能集成测试，覆盖主流程、常见异常分支，以及“成员加入组织后可见项目及下游数据”的协作链路。
+**Goal:** 为当前 PongCode 项目补齐一套可在本地重复执行的完整功能集成测试，覆盖主流程、常见异常分支，以及“成员加入组织后可见项目及下游数据”的协作链路。
 
 **Architecture:** 采用“测试基础设施 + 稳定 UI 锚点 + 分链路 Playwright 集成测试”的方式推进。测试运行在隔离的本地数据库与上传目录之上，优先通过浏览器真实交互验证前后端联动；对多用户协作场景使用双浏览器上下文隔离会话，并以可观测的页面内容、接口错误提示和刷新后的结果作为断言依据。
 

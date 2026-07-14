@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini-Agile</title>
+    <title>PongCode</title>
     <link href="/static/css/tailwind.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -70,6 +70,51 @@
         .filter-pill:hover {
             transform: translateY(-1px);
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        /* Organization project list toolbar */
+        .project-list-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .project-list-toolbar__controls {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex-wrap: nowrap;
+            gap: 8px;
+            margin-left: auto;
+        }
+        .project-list-filter--team {
+            width: 160px;
+        }
+        .project-list-filter--search {
+            width: 224px;
+        }
+        .project-list-filter__icon {
+            flex: 0 0 auto;
+            margin-left: 14px;
+        }
+        @media (max-width: 639px) {
+            .project-list-toolbar {
+                align-items: stretch;
+                flex-direction: column;
+            }
+            .project-list-toolbar__controls {
+                justify-content: flex-start;
+                margin-left: 0;
+                width: 100%;
+            }
+            .project-list-filter--team {
+                width: 42%;
+            }
+            .project-list-filter--search {
+                flex: 1 1 auto;
+                width: auto;
+            }
         }
         
         /* Nav active indicator */
@@ -298,6 +343,7 @@
 
     <script src="/static/js/app.core.js"></script>
     <script src="/static/js/app.views.auth.js"></script>
+    <script src="/static/js/app.views.profile.js"></script>
     <script src="/static/js/app.views.dashboard.js"></script>
     <script src="/static/js/app.views.org.js"></script>
     <script src="/static/js/app.views.team.js"></script>

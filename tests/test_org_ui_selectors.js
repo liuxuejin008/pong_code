@@ -16,7 +16,11 @@ function baseContext() {
         Date,
         URLSearchParams: globalThis.URLSearchParams,
         window: {
-            MiniAgile: { modals: {}, views: {} }
+            MiniAgile: { modals: {}, views: {} },
+            localStorage: {
+                getItem() { return null; },
+                setItem() {}
+            }
         }
     };
 }
@@ -24,6 +28,15 @@ function baseContext() {
 function countTestId(html, testId) {
     const matches = html.match(new RegExp(`data-testid="${testId}"`, 'g'));
     return matches ? matches.length : 0;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 test('仪表盘：页头入口唯一，空态入口使用独立 test id', async () => {
@@ -99,14 +112,21 @@ test('创建项目弹窗：关键主字段具备稳定且唯一的 data-testid',
     let createProjectModalHtml = '';
 
     const fakeContext = {
+        async api(url) {
+            if (url === '/organizations/42/teams') {
+                return { teams: [{ id: 7, name: '研发团队' }] };
+            }
+            return null;
+        },
         modalShow(html) {
             createProjectModalHtml = html;
         }
     };
 
-    context.window.MiniAgile.modals.modalCreateProject.call(fakeContext, 42);
+    await context.window.MiniAgile.modals.modalCreateProject.call(fakeContext, 42);
 
     assert.equal(countTestId(createProjectModalHtml, 'create-project-name-input'), 1, '创建项目名称输入框 test id 应唯一');
+    assert.equal(countTestId(createProjectModalHtml, 'create-project-team-select'), 1, '创建项目团队下拉框 test id 应唯一');
     assert.equal(countTestId(createProjectModalHtml, 'create-project-description-input'), 1, '创建项目描述输入框 test id 应唯一');
     assert.equal(countTestId(createProjectModalHtml, 'create-project-submit-button'), 1, '创建项目提交按钮 test id 应唯一');
 });
@@ -153,11 +173,14 @@ test('组织详情页：页头与空态入口使用不同 test id', async () => 
             if (url === '/organizations/42') {
                 return {
                     organization: { id: 42, name: '测试组织' },
+                    teams: [{ id: 10, name: '产品团队' }],
                     projects: [
                         {
                             id: 1,
                             name: '项目甲',
                             description: '描述',
+                            team_id: 10,
+                            team_name: '产品团队',
                             issues_count: 0,
                             sprints_count: 0
                         }
@@ -172,12 +195,15 @@ test('组织详情页：页头与空态入口使用不同 test id', async () => 
         renderSidebar() {},
         renderTopContext() {},
         isLoading: true,
-        currentOrg: null
+        currentOrg: null,
+        escapeHtml
     };
 
     await context.window.MiniAgile.views.viewOrgDetails.call(fakeContext, 42);
 
     assert.equal(countTestId(orgDetailsHtml, 'create-project-button'), 1, '组织详情页头 create-project-button 应唯一');
+    assert.equal(countTestId(orgDetailsHtml, 'project-team-filter'), 1, '组织详情项目列表应有团队过滤器');
+    assert.equal(countTestId(orgDetailsHtml, 'project-team-badge'), 1, '项目卡片应显示团队标签');
     assert.equal(countTestId(orgDetailsHtml, 'create-project-empty-button'), 0, '有项目时不应渲染空态 create-project-empty-button');
 });
 
@@ -192,6 +218,7 @@ test('组织详情页空态：使用独立的 create-project-empty-button', asyn
             if (url === '/organizations/77') {
                 return {
                     organization: { id: 77, name: '空组织' },
+                    teams: [],
                     projects: []
                 };
             }
@@ -203,7 +230,8 @@ test('组织详情页空态：使用独立的 create-project-empty-button', asyn
         renderSidebar() {},
         renderTopContext() {},
         isLoading: true,
-        currentOrg: null
+        currentOrg: null,
+        escapeHtml
     };
 
     await context.window.MiniAgile.views.viewOrgDetails.call(fakeContext, 77);

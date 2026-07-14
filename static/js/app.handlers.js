@@ -104,6 +104,35 @@
             }
         },
 
+        async handlersUpdateProfile(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            const form = Object.fromEntries(new FormData(e.target));
+            const username = (form.username || '').trim();
+            const email = (form.email || '').trim();
+
+            if (!username || !email) {
+                alert('用户名和邮箱不能为空');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>保存中...';
+            const res = await this.api('/auth/profile', 'PUT', { username, email });
+
+            if (res && res.success) {
+                this.user = res.user;
+                this.renderNav();
+                this.showToast('个人资料已更新');
+                this.viewProfile();
+            } else {
+                alert(res?.error || '个人资料更新失败');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        },
+
         async handlersSubmitOrg(e) {
             e.preventDefault();
             const btn = e.target.querySelector('button[type="submit"]');
@@ -156,6 +185,9 @@
             const res = await this.api(`/organizations/${orgId}/projects`, 'POST', form);
 
             if (res && !res.error) {
+                if (window.localStorage && form.team_id) {
+                    window.localStorage.setItem(`pongcode:last-project-team:${orgId}`, form.team_id);
+                }
                 this.modals.close();
                 this.navigate('org_details', { id: orgId });
             } else {
@@ -216,6 +248,21 @@
                 alert(res?.error || '更新迭代失败，请重试');
                 btn.disabled = false;
                 btn.innerHTML = originalText;
+            }
+        },
+
+        async handlersDeleteSprint(sprintId, projectId, sprintName) {
+            if (!confirm(`确定要删除迭代“${sprintName}”吗？迭代中的任务及任务工时会被永久删除，关联需求和缺陷将保留，此操作不可撤销。`)) {
+                return;
+            }
+
+            const res = await this.api(`/sprints/${sprintId}`, 'DELETE');
+            if (res && !res.error) {
+                this.modals.close();
+                this.showToast('迭代已删除');
+                this.navigate('project_sprints', { id: projectId });
+            } else {
+                alert(res?.error || '删除迭代失败，请重试');
             }
         },
 
@@ -729,6 +776,20 @@
                 }
             } else {
                 alert(res?.error || '删除任务失败，请重试');
+            }
+        },
+
+        async handlersDeleteProject(projectId, organizationId, projectName) {
+            if (!confirm(`确定要删除项目“${projectName}”吗？项目中的迭代、任务、需求和缺陷也会被永久删除，此操作不可撤销。`)) {
+                return;
+            }
+
+            const res = await this.api(`/projects/${projectId}`, 'DELETE');
+            if (res && !res.error) {
+                this.showToast('项目已删除');
+                this.navigate('org_details', { id: organizationId });
+            } else {
+                alert(res?.error || '删除项目失败，请重试');
             }
         },
 

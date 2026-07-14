@@ -272,11 +272,18 @@
                             <textarea name="goal" rows="2" class="block w-full rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 py-2.5 px-4 text-sm resize-none">${sprint.goal || ''}</textarea>
                         </div>
 
-                        <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                            <button type="button" onclick="app.modals.close()" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">取消</button>
-                            <button type="submit" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/30 transition-all hover:scale-105">
-                                <i class="fa-solid fa-save mr-2"></i>保存更改
-                            </button>
+                        <div class="flex items-center justify-between gap-3 pt-4 border-t border-gray-100">
+                            ${data.can_delete ? `
+                                <button type="button" data-testid="delete-sprint-button" onclick='app.handlers.deleteSprint(${sprint.id}, ${sprint.project_id}, ${JSON.stringify(sprint.name).replace(/'/g, "\\u0027")})' class="px-4 py-2.5 text-red-600 hover:text-red-700 hover:bg-red-50 text-sm font-semibold rounded-lg transition-colors">
+                                    <i class="fa-solid fa-trash mr-2"></i>删除迭代
+                                </button>
+                            ` : '<span></span>'}
+                            <div class="flex justify-end gap-3">
+                                <button type="button" onclick="app.modals.close()" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">取消</button>
+                                <button type="submit" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-lg shadow-purple-500/30 transition-all hover:scale-105">
+                                    <i class="fa-solid fa-save mr-2"></i>保存更改
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>

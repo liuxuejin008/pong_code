@@ -37,6 +37,7 @@ class BugEvidenceApiTestCase(unittest.TestCase):
 
         self._register_and_login()
         self.org_id = self._create_organization()
+        self.team_id = self._create_team()
         self.project_id = self._create_project()
         self.bug_id = self._create_bug()
 
@@ -68,10 +69,18 @@ class BugEvidenceApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         return response.get_json()['id']
 
+    def _create_team(self):
+        response = self.client.post(
+            f'/api/organizations/{self.org_id}/teams',
+            json={'name': f'Team-{uuid4().hex[:6]}', 'description': 'test team'},
+        )
+        self.assertEqual(response.status_code, 201)
+        return response.get_json()['id']
+
     def _create_project(self):
         response = self.client.post(
             f'/api/organizations/{self.org_id}/projects',
-            json={'name': 'Evidence Project', 'description': 'test project'},
+            json={'name': 'Evidence Project', 'description': 'test project', 'team_id': self.team_id},
         )
         self.assertEqual(response.status_code, 201)
         return response.get_json()['id']

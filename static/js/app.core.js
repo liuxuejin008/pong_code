@@ -134,6 +134,7 @@
                     case 'register': return '#/register';
                     case 'forgot_password': return '#/forgot-password';
                     case 'reset_password': return '#/reset-password';
+                    case 'profile': return '#/profile';
                     case 'dashboard': return '#/dashboard';
                     case 'organizations': return '#/organizations';
                     case 'org_details': return `#/organizations/${pathId(data.id)}`;
@@ -176,6 +177,7 @@
                 if (parts[0] === 'register') return { view: 'register', data: {} };
                 if (parts[0] === 'forgot-password') return { view: 'forgot_password', data: {} };
                 if (parts[0] === 'reset-password') return { view: 'reset_password', data: {} };
+                if (parts[0] === 'profile') return { view: 'profile', data: {} };
                 if (parts[0] === 'dashboard') return { view: 'dashboard', data: {} };
 
                 if (parts[0] === 'organizations') {
@@ -336,6 +338,10 @@
                         this.setAuthLayout(false);
                         this.viewDashboard();
                         break;
+                    case 'profile':
+                        this.setAuthLayout(false);
+                        this.viewProfile();
+                        break;
                     case 'org_details':
                         this.setAuthLayout(false);
                         this.viewOrgDetails(data.id);
@@ -381,6 +387,9 @@
 
             renderNav() {
                 if (this.user) {
+                    const username = this.escapeHtml(this.user.username || '用户');
+                    const email = this.escapeHtml(this.user.email || '');
+                    const initial = this.escapeHtml((this.user.username || '用').charAt(0).toUpperCase());
                     this.navHtml = `
                         <div class="flex items-center gap-3">
                             <!-- Notifications -->
@@ -393,20 +402,20 @@
                             <div class="relative group">
                                 <button class="flex items-center text-sm font-medium text-gray-700 hover:text-purple-700 focus:outline-none transition-colors gap-2">
                                     <span class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 text-white flex items-center justify-center font-bold shadow-lg shadow-purple-500/30">
-                                        ${this.user.username[0].toUpperCase()}
+                                        ${initial}
                                     </span>
-                                    <span class="hidden sm:inline font-semibold">${this.user.username}</span>
+                                    <span class="hidden sm:inline font-semibold">${username}</span>
                                     <i class="fa-solid fa-chevron-down text-xs text-gray-400"></i>
                                 </button>
                                 <div class="absolute right-0 top-full pt-2 w-56 hidden group-hover:block z-50">
                                     <div class="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
                                         <div class="px-4 py-3 bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200">
                                             <p class="text-xs text-purple-600 uppercase tracking-wider font-bold mb-1">登录账号</p>
-                                            <p class="text-sm font-semibold text-gray-900">${this.user.username}</p>
-                                            <p class="text-xs text-gray-600">${this.user.email || ''}</p>
+                                            <p class="text-sm font-semibold text-gray-900">${username}</p>
+                                            <p class="text-xs text-gray-600">${email}</p>
                                         </div>
                                         <div class="py-2">
-                                            <a href="#" class="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors">
+                                            <a href="#/profile" data-testid="profile-menu-link" onclick="app.navigate('profile'); return false;" class="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors">
                                                 <i class="fa-solid fa-user w-5 mr-2"></i>
                                                 <span>个人资料</span>
                                             </a>
@@ -437,7 +446,7 @@
             },
 
             getBreadcrumbs() {
-                const home = { label: 'Mini-Agile', icon: 'fa-layer-group', view: 'dashboard' };
+                const home = { label: 'PongCode', icon: 'fa-layer-group', view: 'dashboard' };
                 const orgList = { label: '组织', view: 'organizations' };
                 const currentOrg = this.currentOrg ? {
                     label: this.escapeHtml(this.currentOrg.name || '组织'),
@@ -453,6 +462,8 @@
                 switch (this.currentView) {
                     case 'dashboard':
                         return [home];
+                    case 'profile':
+                        return [home, { label: '个人资料', current: true }];
                     case 'organizations':
                         return [home, { ...orgList, current: true }];
                     case 'org_details':
@@ -500,7 +511,7 @@
                             <span class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center mr-3 shadow-lg shadow-purple-500/30">
                                 <i class="fa-solid fa-bolt text-white text-base"></i>
                             </span>
-                            <span class="bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent">Mini-Agile</span>
+                            <span class="bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent">PongCode</span>
                         </span>
                     </div>
                 `;
@@ -700,17 +711,20 @@
                 register: this.handlersRegister.bind(this),
                 forgotPassword: this.handlersForgotPassword.bind(this),
                 resetPassword: this.handlersResetPassword.bind(this),
+                updateProfile: this.handlersUpdateProfile.bind(this),
                 submitOrg: this.handlersSubmitOrg.bind(this),
                 joinOrg: this.handlersJoinOrg.bind(this),
                 submitProject: this.handlersSubmitProject.bind(this),
                 submitSprint: this.handlersSubmitSprint.bind(this),
                 updateSprint: this.handlersUpdateSprint.bind(this),
+                deleteSprint: this.handlersDeleteSprint.bind(this),
                 updateSprintRequirements: this.handlersUpdateSprintRequirements.bind(this),
                 submitSprintWorkLog: this.handlersSubmitSprintWorkLog.bind(this),
                 submitIssue: this.handlersSubmitIssue.bind(this),
                 submitWorkItem: this.handlersSubmitWorkItem.bind(this),
                 updateIssue: this.handlersUpdateIssue.bind(this),
                 deleteIssue: this.handlersDeleteIssue.bind(this),
+                deleteProject: this.handlersDeleteProject.bind(this),
                 submitWorkLog: this.handlersSubmitWorkLog.bind(this),
                 createRequirement: this.handlersCreateRequirement.bind(this),
                 updateRequirement: this.handlersUpdateRequirement.bind(this),

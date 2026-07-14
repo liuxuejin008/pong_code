@@ -104,9 +104,11 @@ class Project(db.Model):
     name = db.Column(db.String(64))
     description = db.Column(db.Text)
     organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'))
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=True)
     
     sprints = db.relationship('Sprint', backref='project', lazy='dynamic')
     issues = db.relationship('Issue', backref='project', lazy='dynamic')
+    team = db.relationship('Team', backref=db.backref('projects', lazy='dynamic'))
 
     def to_dict(self):
         return {
@@ -114,6 +116,8 @@ class Project(db.Model):
             'name': self.name,
             'description': self.description,
             'organization_id': self.organization_id,
+            'team_id': self.team_id,
+            'team_name': self.team.name if self.team else None,
             'issues_count': self.issues.count(),
             'sprints_count': self.sprints.count()
         }

@@ -103,13 +103,6 @@
                     <!-- Header -->
                     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
                         <div>
-                            <div class="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                                <span>项目</span>
-                                <i class="fa-solid fa-chevron-right text-[10px]"></i>
-                                <span>${data.project.name}</span>
-                                <i class="fa-solid fa-chevron-right text-[10px]"></i>
-                                <span class="text-gray-900 font-medium">全部迭代</span>
-                            </div>
                             <h1 class="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
                                 <i class="fa-solid fa-layer-group text-purple-600"></i>
                                 全部迭代

@@ -8,7 +8,7 @@ from flask_login import current_user, login_required
 from extensions import db
 from models import (
     Project, Sprint, Issue, Requirement, Bug,
-    SprintWorkLog, organization_members,
+    SprintWorkLog, WorkLog, organization_members,
 )
 from routes.input_utils import parse_nullable_int, parse_float, parse_date
 
@@ -22,6 +22,16 @@ def _check_project_access(project):
         user_id=current_user.id, organization_id=org.id
     ).first() is not None
     return is_owner or is_member
+
+
+def _check_org_admin(org):
+    if org.owner_id == current_user.id:
+        return True
+    return db.session.query(organization_members).filter_by(
+        user_id=current_user.id,
+        organization_id=org.id,
+        role='admin',
+    ).first() is not None
 
 
 @bp.route('/projects/<int:project_id>/sprints', methods=['POST'])
@@ -56,10 +66,13 @@ def create_sprint(project_id):
 @login_required
 def get_sprint(sprint_id):
     sprint = Sprint.query.get_or_404(sprint_id)
+    if not _check_project_access(sprint.project):
+        return jsonify({'error': '无权访问'}), 403
     logs = sprint.work_logs.order_by(SprintWorkLog.date.desc(), SprintWorkLog.created_at.desc()).all()
     return jsonify({
         'sprint': sprint.to_dict(),
-        'work_logs': [l.to_dict() for l in logs]
+        'work_logs': [l.to_dict() for l in logs],
+        'can_delete': _check_org_admin(sprint.project.organization),
     })
 
 
@@ -97,6 +110,35 @@ def update_sprint(sprint_id):
             return jsonify({'error': str(exc)}), 400
     db.session.commit()
     return jsonify(sprint.to_dict())
+
+
+@bp.route('/sprints/<int:sprint_id>', methods=['DELETE'])
+@login_required
+def delete_sprint(sprint_id):
+    sprint = Sprint.query.get_or_404(sprint_id)
+    if not _check_org_admin(sprint.project.organization):
+        return jsonify({'error': '无权删除迭代'}), 403
+
+    project_id = sprint.project_id
+    issue_ids = [row[0] for row in db.session.query(Issue.id).filter_by(sprint_id=sprint.id)]
+    try:
+        if issue_ids:
+            WorkLog.query.filter(WorkLog.issue_id.in_(issue_ids)).delete(synchronize_session=False)
+            Issue.query.filter(Issue.id.in_(issue_ids)).delete(synchronize_session=False)
+        Requirement.query.filter_by(sprint_id=sprint.id).update(
+            {'sprint_id': None}, synchronize_session=False
+        )
+        Bug.query.filter_by(sprint_id=sprint.id).update(
+            {'sprint_id': None}, synchronize_session=False
+        )
+        SprintWorkLog.query.filter_by(sprint_id=sprint.id).delete(synchronize_session=False)
+        db.session.delete(sprint)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({'error': '删除迭代失败，请重试'}), 500
+
+    return jsonify({'success': True, 'project_id': project_id})
 
 
 @bp.route('/sprints/<int:sprint_id>/worklogs', methods=['POST'])

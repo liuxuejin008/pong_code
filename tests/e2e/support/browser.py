@@ -147,7 +147,7 @@ def save_debug_artifacts(page: Page, label: str, *, last_alert: str | None = Non
 
 
 class MiniAgileUi:
-    """单用户页面上的 Mini-Agile 常用操作。"""
+    """单用户页面上的 PongCode 常用操作。"""
 
     def __init__(self, page: Page, base_url: str):
         self.page = page
@@ -247,7 +247,18 @@ class MiniAgileUi:
     def create_project(self, name: str, description: str = "") -> None:
         self.page.get_by_test_id("create-project-button").click()
         self.page.get_by_test_id("create-project-name-input").wait_for(state="visible")
+        if self.page.get_by_test_id("create-project-team-select").count() == 0:
+            self.page.get_by_role("button", name="取消").last.click()
+            org_id = self.get_current_org_id()
+            self.open_teams_for_org(org_id)
+            self.create_team(f"DefaultTeam_{int(time.time() * 1000)}", "auto-created for project")
+            self.open_org_directly(org_id)
+            self.page.get_by_test_id("create-project-button").click()
+            self.page.get_by_test_id("create-project-name-input").wait_for(state="visible")
         self.page.get_by_test_id("create-project-name-input").fill(name)
+        team_select = self.page.get_by_test_id("create-project-team-select")
+        if team_select.count() > 0:
+            team_select.select_option(index=0)
         self.page.get_by_test_id("create-project-description-input").fill(description)
         _capture_dialogs_during(
             self.page,
