@@ -574,8 +574,15 @@
                                         <div class="text-gray-400 text-xs">登记时间：${log.created_at ? new Date(log.created_at).toLocaleString('zh-CN') : '-'}</div>
                                         ${log.description ? `<div class="text-gray-600 mt-1 italic">"${escapeHtml(log.description)}"</div>` : ''}
                                     </div>
-                                    <div class="font-bold text-red-600 bg-red-50 px-2 py-1 rounded text-xs">
-                                        ${log.hours}h
+                                    <div class="flex flex-col items-center gap-1 shrink-0">
+                                        <div class="font-bold text-red-600 bg-red-50 px-2 py-1 rounded text-xs">
+                                            ${log.hours}h
+                                        </div>
+                                        ${log.can_delete ? `
+                                            <button type="button" data-testid="delete-bug-worklog-button" aria-label="删除这条缺陷工时记录" title="删除工时" onclick="app.handlers.deleteBugWorkLog(${bug.id}, ${log.id})" class="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                                                <i class="fa-solid fa-xmark text-xs"></i>
+                                            </button>
+                                        ` : ''}
                                     </div>
                                 </div>
                             `).join('') : '<div class="text-gray-400 text-sm text-center py-4 italic">暂无工时记录</div>'}

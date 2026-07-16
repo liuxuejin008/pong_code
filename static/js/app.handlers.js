@@ -494,6 +494,20 @@
             }
         },
 
+        async handlersDeleteWorkLog(issueId, worklogId) {
+            if (!confirm('确定要删除这条工时记录吗？此操作不可撤销。')) {
+                return;
+            }
+
+            const res = await this.api(`/issues/${issueId}/worklogs/${worklogId}`, 'DELETE');
+            if (res && res.success) {
+                this.showToast('工时记录已删除');
+                await this.modals.editIssue(issueId, 'time');
+            } else {
+                alert(res?.error || '删除工时记录失败，请重试');
+            }
+        },
+
         async handlersCreateRequirement(e, projectId) {
             e.preventDefault();
             const btn = e.target.querySelector('button[type="submit"]');
@@ -761,6 +775,20 @@
             }
         },
 
+        async handlersDeleteBugWorkLog(bugId, worklogId) {
+            if (!confirm('确定要删除这条缺陷工时记录吗？此操作不可撤销。')) {
+                return;
+            }
+
+            const res = await this.api(`/bugs/${bugId}/worklogs/${worklogId}`, 'DELETE');
+            if (res && res.success) {
+                this.showToast('缺陷工时记录已删除');
+                await this.modals.editBug(bugId, 'time');
+            } else {
+                alert(res?.error || '删除缺陷工时记录失败，请重试');
+            }
+        },
+
         async handlersSubmitBugEvidence(e, bugId) {
             e.preventDefault();
             const btn = e.target.querySelector('button[type="submit"]');
@@ -810,6 +838,24 @@
                 this.navigate('org_details', { id: organizationId });
             } else {
                 alert(res?.error || '删除项目失败，请重试');
+            }
+        },
+
+        async handlersDeleteOrganization(organizationId, organizationName) {
+            if (!confirm(`确定要删除组织“${organizationName}”吗？组织下的项目、迭代、任务、需求、缺陷和团队都会被永久删除，此操作不可撤销。`)) {
+                return;
+            }
+
+            const res = await this.api(`/organizations/${organizationId}`, 'DELETE');
+            if (res && res.success) {
+                this.currentOrg = null;
+                this.currentProject = null;
+                this.currentTeam = null;
+                this.currentSprintId = null;
+                this.showToast('组织已删除');
+                this.navigate('dashboard');
+            } else {
+                alert(res?.error || '删除组织失败，请重试');
             }
         },
 
