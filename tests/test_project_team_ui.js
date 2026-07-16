@@ -22,6 +22,8 @@ test('organization project list exposes team badges and team filtering controls'
     assert.match(dashboard, /data-testid="project-team-filter"/);
     assert.match(dashboard, /data-team-id="\$\{p\.team_id \|\| ''\}"/);
     assert.match(dashboard, /filterProjects/);
+    assert.match(dashboard, /pongcode:project-team-filter:\$\{this\.user\?\.id \|\| 'unknown'\}:\$\{id\}/);
+    assert.match(dashboard, /storage\.setItem\(teamFilterStorageKey, teamFilter\.value\)/);
 });
 
 test('organization project filters share the title row and keep icons inset', () => {

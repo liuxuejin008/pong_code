@@ -218,6 +218,7 @@
 
             const totalIssues = data.projects.reduce((sum, p) => sum + p.issues_count, 0);
             const totalSprints = data.projects.reduce((sum, p) => sum + p.sprints_count, 0);
+            const teamFilterStorageKey = `pongcode:project-team-filter:${this.user?.id || 'unknown'}:${id}`;
 
             this.setMain(`
                 <div class="max-w-7xl mx-auto p-6">
@@ -326,6 +327,16 @@
                 const teamFilter = document.getElementById('project-team-filter');
                 const searchInput = document.getElementById('project-search');
                 const emptyState = document.getElementById('project-filter-empty');
+                const availableTeamIds = new Set((data.teams || []).map(team => String(team.id)));
+                const storage = typeof window !== 'undefined' ? window.localStorage : null;
+                if (teamFilter && storage) {
+                    const savedTeamId = storage.getItem(teamFilterStorageKey) || '';
+                    if (savedTeamId && availableTeamIds.has(savedTeamId)) {
+                        teamFilter.value = savedTeamId;
+                    } else if (savedTeamId) {
+                        storage.removeItem(teamFilterStorageKey);
+                    }
+                }
                 const filterProjects = () => {
                     const selectedTeam = teamFilter?.value || '';
                     const keyword = (searchInput?.value || '').trim().toLowerCase();
@@ -340,7 +351,13 @@
                     });
                     if (emptyState) emptyState.classList.toggle('hidden', visibleCount > 0 || cards.length === 0);
                 };
-                teamFilter?.addEventListener('change', filterProjects);
+                teamFilter?.addEventListener('change', () => {
+                    if (storage) {
+                        if (teamFilter.value) storage.setItem(teamFilterStorageKey, teamFilter.value);
+                        else storage.removeItem(teamFilterStorageKey);
+                    }
+                    filterProjects();
+                });
                 searchInput?.addEventListener('input', filterProjects);
                 filterProjects();
             });
