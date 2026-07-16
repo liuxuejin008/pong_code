@@ -12,17 +12,21 @@
             const totalProjects = orgs.reduce((sum, org) => sum + (org.projects_count || 0), 0);
             const totalDoneTasks = orgs.reduce((sum, org) => sum + (org.done_issues_count || 0), 0);
 
-            const orgsHtml = orgs.map(org => `
-                <div class="group block p-6 bg-white rounded-xl border border-gray-200 hover:border-purple-400 hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-200 cursor-pointer relative overflow-hidden" onclick="app.navigate('org_details', {id: ${org.id}})">
+            const orgsHtml = orgs.map(org => {
+                const orgName = this.escapeHtml(org.name || '');
+                const orgNameArgument = JSON.stringify(org.name || '').replace(/'/g, "\\u0027");
+                const canDeleteOrganization = Number(org.owner_id) === Number(this.user?.id);
+                return `
+                <div data-testid="organization-card" class="group block p-6 bg-white rounded-xl border border-gray-200 hover:border-purple-400 hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-200 cursor-pointer relative overflow-hidden" style="padding-bottom: ${canDeleteOrganization ? '64px' : '24px'};" onclick="app.navigate('org_details', {id: ${org.id}})">
                     <div class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         <i class="fa-solid fa-arrow-right text-purple-500"></i>
                     </div>
                     <div class="flex items-center mb-4">
                         <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white border border-purple-400/20 flex items-center justify-center font-bold text-xl mr-4 shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
-                            ${org.name[0].toUpperCase()}
+                            ${this.escapeHtml((org.name || '组').charAt(0).toUpperCase())}
                         </div>
                         <div class="flex-1">
-                             <h5 class="text-lg font-bold tracking-tight text-gray-900 group-hover:text-purple-600 transition-colors">${org.name}</h5>
+                             <h5 class="text-lg font-bold tracking-tight text-gray-900 group-hover:text-purple-600 transition-colors">${orgName}</h5>
                              <div class="text-xs text-gray-500 flex items-center mt-1.5 gap-2">
                                 <span class="inline-flex items-center bg-gray-100 px-2.5 py-1 rounded-md text-gray-700 font-medium">
                                     <i class="fa-solid fa-folder text-[10px] mr-1.5"></i>${org.projects_count} 个项目
@@ -30,8 +34,14 @@
                              </div>
                         </div>
                     </div>
+                    ${canDeleteOrganization ? `
+                        <button type="button" data-testid="delete-organization-button" aria-label="删除组织 ${orgName}" title="删除组织" onclick='event.stopPropagation(); app.handlers.deleteOrganization(${org.id}, ${orgNameArgument})' class="absolute w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-100 text-gray-500 hover:text-red-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all" style="right: 16px; bottom: 16px;">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    ` : ''}
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
             this.setMain(`
                 <div class="max-w-7xl mx-auto p-6">

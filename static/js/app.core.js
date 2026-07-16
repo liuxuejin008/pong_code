@@ -726,7 +726,9 @@
                 updateIssue: this.handlersUpdateIssue.bind(this),
                 deleteIssue: this.handlersDeleteIssue.bind(this),
                 deleteProject: this.handlersDeleteProject.bind(this),
+                deleteOrganization: this.handlersDeleteOrganization.bind(this),
                 submitWorkLog: this.handlersSubmitWorkLog.bind(this),
+                deleteWorkLog: this.handlersDeleteWorkLog.bind(this),
                 createRequirement: this.handlersCreateRequirement.bind(this),
                 updateRequirement: this.handlersUpdateRequirement.bind(this),
                 deleteRequirement: this.handlersDeleteRequirement.bind(this),
@@ -737,6 +739,7 @@
                 createBug: this.handlersCreateBug.bind(this),
                 updateBug: this.handlersUpdateBug.bind(this),
                 submitBugWorkLog: this.handlersSubmitBugWorkLog.bind(this),
+                deleteBugWorkLog: this.handlersDeleteBugWorkLog.bind(this),
                 submitBugEvidence: this.handlersSubmitBugEvidence.bind(this),
                 deleteBug: this.handlersDeleteBug.bind(this)
             };

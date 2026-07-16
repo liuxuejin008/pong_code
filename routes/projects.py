@@ -1,26 +1,11 @@
 """项目相关 API：创建、查看、更新与删除项目。"""
 
-import os
-
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from flask_login import current_user, login_required
 
 from extensions import db
-from models import (
-    Bug,
-    BugEvidence,
-    BugEvidenceAttachment,
-    BugWorkLog,
-    Issue,
-    Organization,
-    Project,
-    Requirement,
-    Sprint,
-    SprintWorkLog,
-    Team,
-    WorkLog,
-    organization_members,
-)
+from models import Issue, Organization, Project, Team, organization_members
+from services.project_cleanup import delete_project_records, remove_static_attachments
 
 bp = Blueprint('projects', __name__, url_prefix='/api')
 
@@ -128,53 +113,13 @@ def delete_project(project_id):
         return jsonify({'error': '无权删除项目'}), 403
 
     organization_id = project.organization_id
-    issue_ids = [row[0] for row in db.session.query(Issue.id).filter_by(project_id=project.id)]
-    bug_ids = [row[0] for row in db.session.query(Bug.id).filter_by(project_id=project.id)]
-    sprint_ids = [row[0] for row in db.session.query(Sprint.id).filter_by(project_id=project.id)]
-    evidence_ids = [
-        row[0] for row in db.session.query(BugEvidence.id).filter(BugEvidence.bug_id.in_(bug_ids))
-    ] if bug_ids else []
-    attachments = [
-        row[0] for row in db.session.query(BugEvidenceAttachment.file_path).filter(
-            BugEvidenceAttachment.evidence_id.in_(evidence_ids)
-        )
-    ] if evidence_ids else []
-
     try:
-        if evidence_ids:
-            BugEvidenceAttachment.query.filter(
-                BugEvidenceAttachment.evidence_id.in_(evidence_ids)
-            ).delete(synchronize_session=False)
-            BugEvidence.query.filter(BugEvidence.id.in_(evidence_ids)).delete(synchronize_session=False)
-        if bug_ids:
-            BugWorkLog.query.filter(BugWorkLog.bug_id.in_(bug_ids)).delete(synchronize_session=False)
-            Bug.query.filter(Bug.id.in_(bug_ids)).delete(synchronize_session=False)
-        if issue_ids:
-            WorkLog.query.filter(WorkLog.issue_id.in_(issue_ids)).delete(synchronize_session=False)
-            Issue.query.filter(Issue.id.in_(issue_ids)).delete(synchronize_session=False)
-
-        Requirement.query.filter_by(project_id=project.id).delete(synchronize_session=False)
-        if sprint_ids:
-            SprintWorkLog.query.filter(
-                SprintWorkLog.sprint_id.in_(sprint_ids)
-            ).delete(synchronize_session=False)
-            Sprint.query.filter(Sprint.id.in_(sprint_ids)).delete(synchronize_session=False)
-        db.session.delete(project)
+        attachments = delete_project_records(project)
         db.session.commit()
     except Exception:
         db.session.rollback()
         return jsonify({'error': '删除项目失败，请重试'}), 500
 
-    for file_path in attachments:
-        static_root = os.path.realpath(current_app.static_folder)
-        absolute_path = os.path.realpath(os.path.join(static_root, file_path))
-        if os.path.commonpath((static_root, absolute_path)) != static_root:
-            current_app.logger.warning('忽略 static 目录外的附件路径: %s', file_path)
-            continue
-        try:
-            if os.path.isfile(absolute_path):
-                os.remove(absolute_path)
-        except OSError:
-            current_app.logger.warning('项目已删除，但证据附件清理失败: %s', absolute_path)
+    remove_static_attachments(attachments)
 
     return jsonify({'success': True, 'organization_id': organization_id})

@@ -392,6 +392,7 @@ test('看板：泳道容器使用唯一 test id，列通过局部作用域和 da
                                 id: 21,
                                 item_type: 'task',
                                 title: '快捷登记任务',
+                                description: '这里有任务描述',
                                 priority: 3,
                                 time_spent: 1,
                                 time_estimate: 4,
@@ -435,8 +436,10 @@ test('看板：泳道容器使用唯一 test id，列通过局部作用域和 da
     assert.equal(countTestId(boardHtml, 'board-column-doing'), 0, '列级别不应再复用相同 test id');
     assert.equal(countTestId(boardHtml, 'board-column-done'), 0, '列级别不应再复用相同 test id');
     assert.match(boardHtml, /data-testid="board-swimlane-req-10"[\s\S]*data-status="todo"/, '应可在泳道作用域内通过 data-status 选待办列');
-    assert.equal((boardHtml.match(/data-action="quick-log-work"/g) || []).length, 1, '仅任务卡片应显示工时登记快捷按钮');
+    assert.equal((boardHtml.match(/data-action="quick-log-work"/g) || []).length, 2, '任务和缺陷卡片都应显示工时登记快捷按钮');
     assert.match(boardHtml, /app\.modals\.editIssue\(21, 'time'\)/, '快捷按钮应直接打开任务工时页签');
+    assert.match(boardHtml, /app\.modals\.editBug\(22, 'time'\)/, '缺陷快捷按钮应直接打开缺陷工时页签');
+    assert.equal(countTestId(boardHtml, 'task-description-indicator'), 1, '有描述的任务卡片应显示评论图标');
 });
 
 test('编辑任务弹窗：支持直接打开工时页签', async () => {

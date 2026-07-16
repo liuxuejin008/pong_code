@@ -51,11 +51,9 @@
                 return `
                 <div class="bg-white p-3 rounded-lg border ${isBug ? 'border-red-200 hover:border-red-400' : 'border-gray-200 hover:border-purple-300'} shadow-sm cursor-move hover:shadow-md transition-all duration-200 group relative" data-id="${i.id}" data-item-type="${i.item_type || 'task'}" data-requirement-id="${i.requirement_id || ''}" ondblclick="${isBug ? `app.modals.editBug(${i.id})` : `app.modals.editIssue(${i.id})`}">
                     <div class="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                        ${!isBug ? `
-                            <button type="button" data-action="quick-log-work" title="登记工时" aria-label="为任务 ${i.title} 登记工时" onclick="event.stopPropagation(); app.modals.editIssue(${i.id}, 'time');" class="w-5 h-5 bg-purple-50 hover:bg-purple-100 rounded flex items-center justify-center text-purple-600 text-xs">
-                                <i class="fa-regular fa-clock text-[10px]"></i>
-                            </button>
-                        ` : ''}
+                        <button type="button" data-action="quick-log-work" title="登记工时" aria-label="为${isBug ? '缺陷' : '任务'} ${i.title} 登记工时" onclick="event.stopPropagation(); ${isBug ? `app.modals.editBug(${i.id}, 'time')` : `app.modals.editIssue(${i.id}, 'time')`};" class="w-5 h-5 ${isBug ? 'bg-red-50 hover:bg-red-100 text-red-600' : 'bg-purple-50 hover:bg-purple-100 text-purple-600'} rounded flex items-center justify-center text-xs">
+                            <i class="fa-regular fa-clock text-[10px]"></i>
+                        </button>
                         <button onclick="${isBug ? `app.modals.editBug(${i.id})` : `app.modals.editIssue(${i.id})`}; event.stopPropagation();" class="w-5 h-5 ${isBug ? 'bg-red-50 hover:bg-red-100' : 'bg-gray-100 hover:bg-gray-200'} rounded flex items-center justify-center text-gray-500 text-xs">
                             <i class="fa-solid fa-pen text-[10px]"></i>
                         </button>
@@ -95,6 +93,11 @@
                                 <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${i.time_spent > i.time_estimate ? 'bg-red-50 text-red-700' : 'bg-purple-50 text-purple-700'}">
                                     <i class="fa-regular fa-clock mr-0.5"></i>${i.time_spent || 0}/${i.time_estimate || 0}h
                                 </span>
+                                ${String(i.description || '').trim() ? `
+                                    <span data-testid="task-description-indicator" class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-50 text-purple-700" title="该任务有描述" aria-label="该任务有描述">
+                                        <i class="fa-regular fa-comment-dots"></i>
+                                    </span>
+                                ` : ''}
                             `}
                         </div>
                         <div class="w-5 h-5 rounded-full ${isBug ? 'bg-gradient-to-br from-red-400 to-red-600' : 'bg-gradient-to-br from-purple-400 to-purple-600'} text-white border border-white shadow flex items-center justify-center text-[9px] font-bold" title="${i.assignee_name || i.reporter_name || '未分配'}">

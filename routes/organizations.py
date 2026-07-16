@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 from models import User, Organization, Team, organization_members, team_members
+from services.project_cleanup import delete_project_records, remove_static_attachments
 
 bp = Blueprint('organizations', __name__, url_prefix='/api/organizations')
 
@@ -113,6 +114,36 @@ def get_organization_details(org_id):
         'teams': teams,
         'can_manage_projects': is_owner or (membership is not None and membership.role == 'admin')
     })
+
+
+@bp.route('/<int:org_id>', methods=['DELETE'])
+@login_required
+def delete_organization(org_id):
+    org = Organization.query.get_or_404(org_id)
+    if org.owner_id != current_user.id:
+        return jsonify({'error': '只有组织所有者可以删除组织'}), 403
+
+    attachment_paths = []
+    try:
+        for project in org.projects.all():
+            attachment_paths.extend(delete_project_records(project))
+        db.session.flush()
+
+        team_ids = [row[0] for row in db.session.query(Team.id).filter_by(organization_id=org.id)]
+        if team_ids:
+            db.session.execute(team_members.delete().where(team_members.c.team_id.in_(team_ids)))
+            Team.query.filter(Team.id.in_(team_ids)).delete(synchronize_session=False)
+        db.session.execute(
+            organization_members.delete().where(organization_members.c.organization_id == org.id)
+        )
+        db.session.delete(org)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({'error': '删除组织失败，请重试'}), 500
+
+    remove_static_attachments(attachment_paths, subject='组织')
+    return jsonify({'success': True})
 
 
 @bp.route('/<int:org_id>/members', methods=['GET'])

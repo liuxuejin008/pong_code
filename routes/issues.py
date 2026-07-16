@@ -19,6 +19,16 @@ def _check_project_access(project):
     return is_owner or is_member
 
 
+def _check_org_admin(org):
+    if org.owner_id == current_user.id:
+        return True
+    return db.session.query(organization_members).filter_by(
+        user_id=current_user.id,
+        organization_id=org.id,
+        role='admin',
+    ).first() is not None
+
+
 @bp.route('/projects/<int:project_id>/issues', methods=['POST'])
 @login_required
 def create_issue(project_id):
@@ -63,10 +73,18 @@ def create_issue(project_id):
 @login_required
 def get_issue(issue_id):
     issue = Issue.query.get_or_404(issue_id)
+    if not _check_project_access(issue.project):
+        return jsonify({'error': '无权访问'}), 403
     logs = issue.work_logs.order_by(WorkLog.date.desc(), WorkLog.created_at.desc()).all()
+    can_manage_logs = _check_org_admin(issue.project.organization)
+    work_logs = []
+    for log in logs:
+        log_data = log.to_dict()
+        log_data['can_delete'] = can_manage_logs or log.user_id == current_user.id
+        work_logs.append(log_data)
     return jsonify({
         'issue': issue.to_dict(),
-        'work_logs': [l.to_dict() for l in logs]
+        'work_logs': work_logs
     })
 
 
@@ -121,6 +139,8 @@ def delete_issue(issue_id):
 @login_required
 def add_worklog(issue_id):
     issue = Issue.query.get_or_404(issue_id)
+    if not _check_project_access(issue.project):
+        return jsonify({'error': '无权访问'}), 403
     data = request.get_json()
     try:
         log_date = parse_date(data.get('date'), 'date', required=True)
@@ -140,6 +160,22 @@ def add_worklog(issue_id):
     db.session.add(log)
     db.session.commit()
     return jsonify({'log': log.to_dict(), 'issue': issue.to_dict()}), 201
+
+
+@bp.route('/issues/<int:issue_id>/worklogs/<int:worklog_id>', methods=['DELETE'])
+@login_required
+def delete_worklog(issue_id, worklog_id):
+    issue = Issue.query.get_or_404(issue_id)
+    if not _check_project_access(issue.project):
+        return jsonify({'error': '无权访问'}), 403
+
+    log = WorkLog.query.filter_by(id=worklog_id, issue_id=issue.id).first_or_404()
+    if log.user_id != current_user.id and not _check_org_admin(issue.project.organization):
+        return jsonify({'error': '无权删除这条工时记录'}), 403
+
+    db.session.delete(log)
+    db.session.commit()
+    return jsonify({'success': True, 'issue_id': issue.id})
 
 
 @bp.route('/issues/<int:issue_id>/move', methods=['POST'])

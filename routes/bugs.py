@@ -226,9 +226,15 @@ def get_bug(bug_id):
         return jsonify({'error': '无权访问'}), 403
     logs = bug.work_logs.order_by(BugWorkLog.date.desc(), BugWorkLog.created_at.desc()).all()
     evidences = bug.evidences.order_by(BugEvidence.created_at.desc(), BugEvidence.id.desc()).all()
+    can_manage_logs = _check_org_admin(bug.project.organization)
+    work_logs = []
+    for log in logs:
+        log_data = log.to_dict()
+        log_data['can_delete'] = can_manage_logs or log.user_id == current_user.id
+        work_logs.append(log_data)
     return jsonify({
         'bug': bug.to_dict(),
-        'work_logs': [l.to_dict() for l in logs],
+        'work_logs': work_logs,
         'evidences': [e.to_dict() for e in evidences]
     })
 
@@ -357,6 +363,22 @@ def add_bug_worklog(bug_id):
     db.session.add(log)
     db.session.commit()
     return jsonify({'log': log.to_dict(), 'bug': bug.to_dict()}), 201
+
+
+@bp.route('/bugs/<int:bug_id>/worklogs/<int:worklog_id>', methods=['DELETE'])
+@login_required
+def delete_bug_worklog(bug_id, worklog_id):
+    bug = Bug.query.get_or_404(bug_id)
+    if not _check_bug_access(bug):
+        return jsonify({'error': '无权访问'}), 403
+
+    log = BugWorkLog.query.filter_by(id=worklog_id, bug_id=bug.id).first_or_404()
+    if log.user_id != current_user.id and not _check_org_admin(bug.project.organization):
+        return jsonify({'error': '无权删除这条工时记录'}), 403
+
+    db.session.delete(log)
+    db.session.commit()
+    return jsonify({'success': True, 'bug_id': bug.id})
 
 
 @bp.route('/projects/<int:project_id>/bugs/stats', methods=['GET'])
