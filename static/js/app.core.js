@@ -136,6 +136,7 @@
                     case 'reset_password': return '#/reset-password';
                     case 'profile': return '#/profile';
                     case 'dashboard': return '#/dashboard';
+                    case 'workbench': return withQuery('/workbench');
                     case 'organizations': return '#/organizations';
                     case 'org_details': return `#/organizations/${pathId(data.id)}`;
                     case 'org_members': return `#/organizations/${pathId(data.id)}/members`;
@@ -179,6 +180,7 @@
                 if (parts[0] === 'reset-password') return { view: 'reset_password', data: {} };
                 if (parts[0] === 'profile') return { view: 'profile', data: {} };
                 if (parts[0] === 'dashboard') return { view: 'dashboard', data: {} };
+                if (parts[0] === 'workbench') return { view: 'workbench', data: { params: paramsObject } };
 
                 if (parts[0] === 'organizations') {
                     if (parts.length === 1) return { view: 'organizations', data: {} };
@@ -293,7 +295,7 @@
                 this.currentView = view;
                 this.isLoading = !['login', 'register', 'forgot_password', 'reset_password'].includes(view);
 
-                if (view === 'dashboard') {
+                if (view === 'dashboard' || view === 'workbench') {
                     this.currentProject = null;
                     this.currentOrg = null;
                     this.currentTeam = null;
@@ -337,6 +339,10 @@
                     case 'dashboard':
                         this.setAuthLayout(false);
                         this.viewDashboard();
+                        break;
+                    case 'workbench':
+                        this.setAuthLayout(false);
+                        this.viewWorkbench(data.params);
                         break;
                     case 'profile':
                         this.setAuthLayout(false);
@@ -462,6 +468,8 @@
                 switch (this.currentView) {
                     case 'dashboard':
                         return [home];
+                    case 'workbench':
+                        return [home, { label: '工作台', current: true }];
                     case 'profile':
                         return [home, { label: '个人资料', current: true }];
                     case 'organizations':
@@ -593,9 +601,9 @@
                                     <i class="fa-solid fa-house w-5 text-center mr-3 text-base ${this.currentView === 'dashboard' ? 'text-purple-400' : 'text-gray-500'}"></i>
                                     控制台
                                 </a>
-                                <a href="#" onclick="app.navigate('organizations')" class="nav-item group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all ${this.currentView === 'organizations' || this.currentView === 'org_members' ? 'active text-purple-300' : 'text-gray-300 hover:bg-sidebar-hover hover:text-white'}">
-                                    <i class="fa-solid fa-building w-5 text-center mr-3 text-base ${this.currentView === 'organizations' || this.currentView === 'org_members' ? 'text-purple-400' : 'text-gray-500'}"></i>
-                                    组织
+                                <a href="#" data-testid="sidebar-nav-workbench" onclick="app.navigate('workbench'); return false;" class="nav-item group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all ${this.currentView === 'workbench' ? 'active text-purple-300' : 'text-gray-300 hover:bg-sidebar-hover hover:text-white'}">
+                                    <i class="fa-solid fa-briefcase w-5 text-center mr-3 text-base ${this.currentView === 'workbench' ? 'text-purple-400' : 'text-gray-500'}"></i>
+                                    工作台
                                 </a>
                                 <a href="#" data-testid="sidebar-nav-teams" onclick="app.modals.selectOrgForTeams(); return false;" class="nav-item group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all ${this.currentView === 'teams' || this.currentView === 'team_details' ? 'active text-purple-300' : 'text-gray-300 hover:bg-sidebar-hover hover:text-white'}">
                                     <i class="fa-solid fa-users w-5 text-center mr-3 text-base ${this.currentView === 'teams' || this.currentView === 'team_details' ? 'text-purple-400' : 'text-gray-500'}"></i>
