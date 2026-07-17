@@ -23,7 +23,9 @@
             const sprintButton = item.sprint_id
                 ? `<button type="button" title="前往对应迭代" aria-label="前往对应迭代" onclick="event.stopPropagation(); app.navigate('board', {id: ${item.project_id}, sprintId: ${item.sprint_id}})" class="workbench-action-button"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>`
                 : `<button type="button" title="尚未关联迭代" aria-label="尚未关联迭代" disabled class="workbench-action-button cursor-not-allowed"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>`;
-            const taskActions = isBug ? '' : `
+            const itemActions = isBug ? `
+                <button type="button" data-testid="workbench-bug-edit" title="编辑缺陷" aria-label="编辑缺陷" onclick="event.stopPropagation(); app.modals.editBug(${item.id})" class="workbench-action-button"><i class="fa-solid fa-pen"></i></button>
+                <button type="button" data-testid="workbench-bug-worklog" title="登记工时" aria-label="登记工时" onclick="event.stopPropagation(); app.modals.editBug(${item.id}, 'time')" class="workbench-action-button"><i class="fa-solid fa-clock"></i></button>` : `
                 <button type="button" data-testid="workbench-task-edit" title="编辑任务" aria-label="编辑任务" onclick="event.stopPropagation(); app.modals.editIssue(${item.id})" class="workbench-action-button"><i class="fa-solid fa-pen"></i></button>
                 <button type="button" data-testid="workbench-task-worklog" title="登记工时" aria-label="登记工时" onclick="event.stopPropagation(); app.modals.editIssue(${item.id}, 'time')" class="workbench-action-button"><i class="fa-solid fa-clock"></i></button>`;
             const rank = isBug ? priorityLabel[item.severity] : priorityLabel[item.priority];
@@ -32,7 +34,7 @@
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 mb-1"><span class="font-semibold text-gray-900 truncate">${escape(item.title)}</span><span class="px-2 py-0.5 rounded text-xs font-medium ${item.status === 'doing' || item.status === 'in_progress' ? `bg-${color}-100 text-${color}-700` : 'bg-gray-100 text-gray-600'}">${statusLabel[item.status]}</span></div>
                     <div class="workbench-item-meta text-xs text-gray-500"><span>${escape(item.project_name)}</span><span>${escape(item.sprint_name || '未关联迭代')}</span><span>${isBug ? '严重程度' : '优先级'}：${rank || '-'}</span><span>已登记 ${Number(item.time_spent || 0).toFixed(1)}h</span></div>
-                </div><div class="workbench-item-actions">${taskActions}${sprintButton}</div>
+                </div><div class="workbench-item-actions">${itemActions}${sprintButton}</div>
             </div>`;
         };
         const empty = (label) => `<div class="px-5 py-10 text-center text-sm text-gray-400">暂无${label}</div>`;

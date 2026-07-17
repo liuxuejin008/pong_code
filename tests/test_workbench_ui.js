@@ -35,6 +35,12 @@ test('workbench tasks expose edit and quick worklog actions', () => {
     assert.doesNotMatch(view, /hover:border-emerald/);
 });
 
+test('workbench bugs expose edit and quick worklog actions', () => {
+    assert.match(view, /data-testid="workbench-bug-edit"/);
+    assert.match(view, /data-testid="workbench-bug-worklog"/);
+    assert.match(view, /app\.modals\.editBug\(\$\{item\.id\}, 'time'\)/);
+});
+
 test('workbench uses one date-range picker and merges repeated dates', () => {
     assert.match(view, /data-testid="workbench-date-range-trigger"/);
     assert.match(view, /class="workbench-date-control"/);
