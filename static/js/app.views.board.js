@@ -1,6 +1,32 @@
 (function () {
     const MiniAgile = window.MiniAgile = window.MiniAgile || {};
     MiniAgile.views = MiniAgile.views || {};
+    const BOARD_HIDE_COMPLETED_STORAGE_KEY = 'pongcode:board:hide-completed';
+
+        MiniAgile.views.toggleBoardCompletedCards = function(button, projectId, sprintId, enabled) {
+            button.disabled = true;
+            try {
+                window.localStorage.setItem(BOARD_HIDE_COMPLETED_STORAGE_KEY, enabled ? 'true' : 'false');
+            } catch (error) {
+                console.warn('无法保存看板显示偏好', error);
+            }
+            this.navigate('board', { id: projectId, sprintId });
+        };
+
+        MiniAgile.views.updateBoardSprintStatus = async function(button, sprintId, projectId, nextStatus) {
+            const details = button.closest('details');
+            details.open = false;
+            details.querySelectorAll('button').forEach(item => { item.disabled = true; });
+
+            const res = await this.api(`/sprints/${sprintId}`, 'PUT', { status: nextStatus });
+            if (!res || res.error) {
+                details.querySelectorAll('button').forEach(item => { item.disabled = false; });
+                alert(res?.error || '迭代状态更新失败，请重试');
+                return;
+            }
+
+            this.navigate('board', { id: projectId, sprintId });
+        };
 
         MiniAgile.views.viewBoard = async function(id, sprintId) {
             this.currentSprintId = sprintId || null;
@@ -44,9 +70,17 @@
                 return;
             }
 
+            let hideCompletedCards = false;
+            try {
+                hideCompletedCards = window.localStorage.getItem(BOARD_HIDE_COMPLETED_STORAGE_KEY) === 'true';
+            } catch (error) {
+                console.warn('无法读取看板显示偏好', error);
+            }
+
             const renderCard = (i) => {
                 const isBug = i.item_type === 'bug';
                 const severityLabels = { 1: 'S0', 2: 'S1', 3: 'S2', 4: 'S3', 5: 'S4' };
+                const assigneeName = i.assignee_name || i.reporter_name || '未分配';
                 
                 return `
                 <div class="bg-white p-3 rounded-lg border ${isBug ? 'border-red-200 hover:border-red-400' : 'border-gray-200 hover:border-purple-300'} shadow-sm cursor-move hover:shadow-md transition-all duration-200 group relative" data-id="${i.id}" data-item-type="${i.item_type || 'task'}" data-requirement-id="${i.requirement_id || ''}" ondblclick="${isBug ? `app.modals.editBug(${i.id})` : `app.modals.editIssue(${i.id})`}">
@@ -66,8 +100,8 @@
                         </div>
                     </div>
 
-                    <div class="flex justify-between items-center pt-2 border-t ${isBug ? 'border-red-100' : 'border-gray-100'}">
-                        <div class="flex items-center gap-1">
+                    <div class="flex flex-wrap justify-between items-center gap-1 pt-2 border-t ${isBug ? 'border-red-100' : 'border-gray-100'}">
+                        <div class="flex flex-wrap items-center gap-1">
                             ${isBug ? `
                                 <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
                                     i.severity === 1 ? 'bg-red-100 text-red-700 border-red-300' :
@@ -100,9 +134,9 @@
                                 ` : ''}
                             `}
                         </div>
-                        <div class="w-5 h-5 rounded-full ${isBug ? 'bg-gradient-to-br from-red-400 to-red-600' : 'bg-gradient-to-br from-purple-400 to-purple-600'} text-white border border-white shadow flex items-center justify-center text-[9px] font-bold" title="${i.assignee_name || i.reporter_name || '未分配'}">
-                            ${(i.assignee_name || i.reporter_name) ? (i.assignee_name || i.reporter_name)[0].toUpperCase() : '?'}
-                        </div>
+                        <span data-testid="board-assignee-badge" class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold border break-all ${isBug ? 'bg-red-50 text-red-700 border-red-200' : 'bg-purple-50 text-purple-700 border-purple-200'}" title="负责人：${assigneeName}">
+                            <i class="fa-regular fa-user mr-0.5 shrink-0"></i>${assigneeName}
+                        </span>
                     </div>
                 </div>
             `;
@@ -119,6 +153,22 @@
                 allIssues.forEach(i => { totalTimeSpent += (i.time_spent || 0); });
             });
             const completionRate = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+            const sprintStatusStyles = {
+                open: {
+                    badge: 'text-gray-700 bg-gray-100 border-gray-200 hover:bg-gray-200',
+                    dot: 'bg-gray-400'
+                },
+                active: {
+                    badge: 'text-amber-800 bg-amber-100 border-amber-200 hover:bg-amber-100',
+                    dot: 'bg-amber-400'
+                },
+                closed: {
+                    badge: 'text-emerald-800 bg-emerald-100 border-emerald-200 hover:bg-emerald-200',
+                    dot: 'bg-emerald-500'
+                }
+            };
+            const sprintStatusStyle = sprintStatusStyles[data.sprint.status] || sprintStatusStyles.open;
+            const sprintStatusLabels = { open: '未开始', active: '进行中', closed: '已完成' };
 
             // 渲染泳道
             const renderSwimlane = (swimlane, index) => {
@@ -193,7 +243,9 @@
                                     <span class="text-xs text-gray-500">${swimlane.done.length}</span>
                                 </div>
                                 <div class="kanban-col flex-1 min-h-[80px] bg-emerald-50/50 rounded-lg p-2 space-y-2 border border-dashed border-emerald-200" data-status="done" data-swimlane="${swimlaneId}">
-                                    ${swimlane.done.length > 0 ? swimlane.done.map(renderCard).join('') : '<div class="empty-state text-center py-4 text-gray-400 text-xs">暂无</div>'}
+                                    ${hideCompletedCards && swimlane.done.length > 0
+                                        ? `<div class="empty-state text-center py-4 text-gray-400 text-xs">已隐藏 ${swimlane.done.length} 项</div>`
+                                        : (swimlane.done.length > 0 ? swimlane.done.map(renderCard).join('') : '<div class="empty-state text-center py-4 text-gray-400 text-xs">暂无</div>')}
                                 </div>
                             </div>
                         </div>
@@ -209,9 +261,21 @@
                             <div class="flex-1">
                                 <div class="flex items-center gap-3 mb-2">
                                     <h1 class="text-2xl font-bold text-gray-900 tracking-tight">${data.sprint.name}</h1>
-                                    <span class="inline-flex items-center text-xs font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-full uppercase tracking-wide shadow-sm">
-                                        <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 animate-pulse"></span>活跃
-                                    </span>
+                                    <details class="relative shrink-0 group/status">
+                                        <summary data-testid="board-sprint-status-trigger" aria-label="切换迭代状态" style="height: 30px; padding-left: 16.5px; padding-right: 16.5px;" class="list-none inline-flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap border rounded-full cursor-pointer select-none transition-colors focus:outline-none focus:ring-2 focus:ring-purple-200 ${sprintStatusStyle.badge}">
+                                            <span class="w-1.5 h-1.5 rounded-full shrink-0 ${sprintStatusStyle.dot}"></span>
+                                            <span>${sprintStatusLabels[data.sprint.status] || sprintStatusLabels.open}</span>
+                                            <i class="fa-solid fa-chevron-down ml-0.5 text-[8px] opacity-50 transition-transform group-open/status:rotate-180"></i>
+                                        </summary>
+                                        <div data-testid="board-sprint-status-menu" class="absolute left-0 top-full z-30 mt-1.5 w-32 overflow-hidden rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg">
+                                            ${Object.entries(sprintStatusLabels).map(([status, label]) => `
+                                                <button type="button" onclick="app.updateBoardSprintStatus(this, ${data.sprint.id}, ${id}, '${status}')" class="flex w-full items-center gap-2 whitespace-nowrap rounded-md px-2.5 py-2 text-left text-xs font-medium ${status === data.sprint.status ? 'bg-purple-50 text-purple-700' : 'text-gray-700 hover:bg-gray-50'} disabled:opacity-50">
+                                                    <span class="w-1.5 h-1.5 rounded-full shrink-0 ${sprintStatusStyles[status].dot}"></span>${label}
+                                                    ${status === data.sprint.status ? '<i class="fa-solid fa-check ml-auto text-[9px]"></i>' : ''}
+                                                </button>
+                                            `).join('')}
+                                        </div>
+                                    </details>
                                 </div>
                                 <div class="flex items-center gap-4 text-sm text-gray-600">
                                     <span class="flex items-center font-medium">
@@ -237,6 +301,12 @@
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">
+                                <button type="button" role="switch" aria-checked="${hideCompletedCards}" data-testid="board-hide-completed-toggle" onclick="app.toggleBoardCompletedCards(this, ${id}, ${sprintId}, ${!hideCompletedCards})" style="height: 38px;" class="inline-flex items-center gap-2 px-3 bg-white border border-gray-300 rounded-lg text-xs font-medium text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors disabled:opacity-60" title="隐藏已完成卡片">
+                                    <span>隐藏已完成</span>
+                                    <span class="relative w-8 h-4 rounded-full transition-colors ${hideCompletedCards ? 'bg-purple-600' : 'bg-gray-300'}">
+                                        <span class="absolute w-3 h-3 bg-white rounded-full shadow-sm" style="top: 2px; left: 2px; transform: translateX(${hideCompletedCards ? '16px' : '0'}); transition: transform 150ms;"></span>
+                                    </span>
+                                </button>
                                 <button onclick="app.navigate('board', {id: ${id}${sprintId ? `, sprintId: ${sprintId}` : ''}})" class="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1.5">
                                     <i class="fa-solid fa-rotate text-xs"></i>
                                     <span>刷新</span>
