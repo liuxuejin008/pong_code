@@ -18,12 +18,26 @@ from models import (
     organization_members,
 )
 from routes.input_utils import parse_nullable_int, parse_int, parse_float, parse_date
+from routes.item_codes import allocate_item_code
 
 bp = Blueprint('bugs', __name__, url_prefix='/api')
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 MAX_EVIDENCE_IMAGE_COUNT = 5
 MAX_EVIDENCE_IMAGE_SIZE = 5 * 1024 * 1024
+BUG_STATUSES = {'open', 'in_progress', 'fixed', 'closed', 'rejected'}
+
+
+def _normalize_bug_status(status):
+    """Keep historical `resolved` records compatible with the renamed `fixed` status."""
+    return 'fixed' if status == 'resolved' else status
+
+
+def _parse_bug_status(value):
+    status = _normalize_bug_status(value)
+    if status not in BUG_STATUSES:
+        raise ValueError('无效的缺陷状态')
+    return status
 
 
 def _check_project_access(project):
@@ -160,11 +174,19 @@ def get_bugs(project_id):
         query = query.filter(
             db.or_(
                 Bug.title.ilike(f'%{search}%'),
-                Bug.description.ilike(f'%{search}%')
+                Bug.description.ilike(f'%{search}%'),
+                Bug.item_code.ilike(f'%{search}%')
             )
         )
     if status:
-        query = query.filter_by(status=status)
+        if status == 'fixed':
+            query = query.filter(Bug.status.in_(['fixed', 'resolved']))
+        else:
+            try:
+                status = _parse_bug_status(status)
+            except ValueError as exc:
+                return jsonify({'error': str(exc)}), 400
+            query = query.filter_by(status=status)
     if severity:
         try:
             query = query.filter_by(severity=parse_int(severity, 'severity'))
@@ -198,11 +220,18 @@ def create_bug(project_id):
         requirement_id = parse_nullable_int(data.get('requirement_id'), 'requirement_id')
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
+    try:
+        status = _parse_bug_status(data.get('status', 'open'))
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    item_code, sprint_error = allocate_item_code(sprint_id, project_id)
+    if sprint_error:
+        return jsonify({'error': sprint_error}), 404
     bug = Bug(
         title=data['title'],
         description=data['description'],
         severity=severity,
-        status=data.get('status', 'open'),
+        status=status,
         steps_to_reproduce=data.get('steps_to_reproduce'),
         expected_result=data.get('expected_result'),
         actual_result=data.get('actual_result'),
@@ -211,7 +240,8 @@ def create_bug(project_id):
         reporter_id=current_user.id,
         assignee_id=assignee_id,
         sprint_id=sprint_id,
-        requirement_id=requirement_id
+        requirement_id=requirement_id,
+        item_code=item_code
     )
     db.session.add(bug)
     db.session.commit()
@@ -256,11 +286,16 @@ def update_bug(bug_id):
         except ValueError as exc:
             return jsonify({'error': str(exc)}), 400
     if 'status' in data:
+        try:
+            new_status = _parse_bug_status(data['status'])
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
         old_status = bug.status
-        bug.status = data['status']
-        if data['status'] in ['resolved', 'closed'] and old_status not in ['resolved', 'closed']:
+        bug.status = new_status
+        terminal_statuses = {'closed', 'rejected'}
+        if new_status in terminal_statuses and old_status not in terminal_statuses:
             bug.resolved_at = datetime.utcnow()
-        elif data['status'] not in ['resolved', 'closed']:
+        elif new_status not in terminal_statuses:
             bug.resolved_at = None
     if 'steps_to_reproduce' in data:
         bug.steps_to_reproduce = data['steps_to_reproduce']
@@ -392,7 +427,7 @@ def get_bugs_stats(project_id):
         'total': len(bugs),
         'open': len([b for b in bugs if b.status == 'open']),
         'in_progress': len([b for b in bugs if b.status == 'in_progress']),
-        'resolved': len([b for b in bugs if b.status == 'resolved']),
+        'fixed': len([b for b in bugs if b.status in ('fixed', 'resolved')]),
         'closed': len([b for b in bugs if b.status == 'closed']),
         'rejected': len([b for b in bugs if b.status == 'rejected']),
         'by_severity': {

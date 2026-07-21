@@ -202,6 +202,42 @@ test('handlersCreateBug：有首次证据时先创建主单再提交流水，且
     );
 });
 
+test('handlersCreateBug：从看板创建成功后留在当前迭代看板', async () => {
+    const navigateCalls = [];
+    const handlers = loadHandlersContext();
+    const app = {
+        async api(url, method) {
+            if (method === 'POST' && url === '/projects/8/bugs') {
+                return { id: 88, error: null };
+            }
+            return {};
+        },
+        modals: { close() {} },
+        navigate(view, opts) {
+            navigateCalls.push({ view, opts });
+        },
+        currentView: 'board',
+        currentSprintId: 18
+    };
+    const form = makeForm([
+        ['title', '看板缺陷'],
+        ['description', '描述'],
+        ['severity', '3'],
+        ['status', 'open'],
+        ['steps_to_reproduce', '步骤'],
+        ['assignee_id', ''],
+        ['sprint_id', '18'],
+        ['requirement_id', '']
+    ]);
+
+    await handlers.handlersCreateBug.call(app, { preventDefault() {}, target: form }, 8);
+
+    assert.equal(navigateCalls.length, 1);
+    assert.equal(navigateCalls[0].view, 'board');
+    assert.equal(navigateCalls[0].opts.id, 8);
+    assert.equal(navigateCalls[0].opts.sprintId, 18);
+});
+
 test('handlersUpdateBug：PUT 请求体不包含 environment / expected_result / actual_result（即使表单带有这些键）', async () => {
     const handlers = loadHandlersContext();
     const calls = [];

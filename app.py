@@ -43,6 +43,33 @@ def ensure_project_team_schema():
         db.session.commit()
 
 
+def ensure_item_code_schema():
+    """兼容历史数据库：只补字段，不为历史任务或缺陷补编码。"""
+    inspector = inspect(db.engine)
+    table_names = set(inspector.get_table_names())
+    additions = {
+        'sprint': (
+            ('code_prefix', 'VARCHAR(3)'),
+            ('next_item_number', 'INTEGER'),
+        ),
+        'issue': (('item_code', 'VARCHAR(16)'),),
+        'bug': (('item_code', 'VARCHAR(16)'),),
+    }
+    changed = False
+    for table_name, columns in additions.items():
+        if table_name not in table_names:
+            continue
+        existing_columns = {column['name'] for column in inspector.get_columns(table_name)}
+        for column_name, column_type in columns:
+            if column_name not in existing_columns:
+                db.session.execute(text(
+                    f'ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}'
+                ))
+                changed = True
+    if changed:
+        db.session.commit()
+
+
 def create_app():
     app = Flask(__name__, static_folder='static', static_url_path='/static')
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-change-this')
@@ -104,6 +131,7 @@ def create_app():
         db.create_all()
         ensure_bug_evidence_schema()
         ensure_project_team_schema()
+        ensure_item_code_schema()
 
     return app
 

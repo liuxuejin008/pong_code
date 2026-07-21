@@ -134,6 +134,8 @@ class Sprint(db.Model):
     description = db.Column(db.Text)
     goal = db.Column(db.Text)
     category = db.Column(db.String(50)) # e.g., 'Product', 'Tech'
+    code_prefix = db.Column(db.String(3), unique=True, nullable=True)
+    next_item_number = db.Column(db.Integer, nullable=True)
     
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'))
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
@@ -190,6 +192,7 @@ class Sprint(db.Model):
             'description': self.description,
             'goal': self.goal,
             'category': self.category,
+            'code_prefix': self.code_prefix,
             'owner_id': self.owner_id,
             'owner_name': self.owner.username if self.owner else None
         }
@@ -204,6 +207,7 @@ class Issue(db.Model):
     status = db.Column(db.String(20), default='todo') # todo, doing, done
     priority = db.Column(db.Integer, default=3) # 1 (High) to 5 (Low)
     time_estimate = db.Column(db.Integer, default=0) # Time estimate in hours
+    item_code = db.Column(db.String(16), nullable=True)
 
     assignee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'))
@@ -217,6 +221,7 @@ class Issue(db.Model):
         return {
             'id': self.id,
             'title': self.title,
+            'item_code': self.item_code,
             'description': self.description,
             'status': self.status,
             'priority': self.priority,
@@ -399,7 +404,7 @@ class Bug(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
     severity = db.Column(db.Integer, default=3)  # 1 (致命) to 5 (建议)
-    status = db.Column(db.String(20), default='open')  # open, in_progress, resolved, closed, rejected
+    status = db.Column(db.String(20), default='open')  # open, in_progress, fixed, closed (verified), rejected
     steps_to_reproduce = db.Column(db.Text, nullable=True)  # 复现步骤
     time_estimate = db.Column(db.Float, default=0)  # 预估工时
     expected_result = db.Column(db.Text, nullable=True)  # 期望结果
@@ -410,6 +415,7 @@ class Bug(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     resolved_at = db.Column(db.DateTime, nullable=True)  # 解决时间
+    item_code = db.Column(db.String(16), nullable=True)
     
     # Foreign keys
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
@@ -431,6 +437,7 @@ class Bug(db.Model):
         return {
             'id': self.id,
             'title': self.title,
+            'item_code': self.item_code,
             'description': self.description,
             'severity': self.severity,
             'status': self.status,

@@ -11,6 +11,7 @@ from models import (
     SprintWorkLog, WorkLog, organization_members,
 )
 from routes.input_utils import parse_nullable_int, parse_float, parse_date
+from routes.item_codes import generate_sprint_code_prefix
 
 bp = Blueprint('sprints', __name__, url_prefix='/api')
 
@@ -47,6 +48,10 @@ def create_sprint(project_id):
         owner_id = parse_nullable_int(data.get('owner_id'), 'owner_id') or current_user.id
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
+    try:
+        code_prefix = generate_sprint_code_prefix()
+    except RuntimeError as exc:
+        return jsonify({'error': str(exc)}), 503
     sprint = Sprint(
         name=data['name'],
         start_date=start_date,
@@ -56,6 +61,8 @@ def create_sprint(project_id):
         goal=data.get('goal'),
         category=data.get('category'),
         owner_id=owner_id,
+        code_prefix=code_prefix,
+        next_item_number=1,
     )
     db.session.add(sprint)
     db.session.commit()
@@ -237,7 +244,8 @@ def get_board(project_id):
         status_map = {
             'open': 'todo',
             'in_progress': 'doing',
-            'resolved': 'done',
+            'fixed': 'doing',
+            'resolved': 'doing',  # historical value before “已解决” was renamed
             'closed': 'done',
             'rejected': 'done'
         }

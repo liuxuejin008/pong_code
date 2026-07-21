@@ -27,14 +27,16 @@
         const statusLabels = {
             'open': '待处理',
             'in_progress': '处理中',
-            'resolved': '已解决',
-            'closed': '已关闭',
+            'fixed': '已修复',
+            'resolved': '已修复',
+            'closed': '已验证',
             'rejected': '已拒绝'
         };
 
         const statusColors = {
             'open': 'bg-red-100 text-red-700 border-red-300',
             'in_progress': 'bg-purple-100 text-purple-700 border-purple-300',
+            'fixed': 'bg-blue-100 text-blue-700 border-blue-300',
             'resolved': 'bg-blue-100 text-blue-700 border-blue-300',
             'closed': 'bg-emerald-100 text-emerald-700 border-emerald-300',
             'rejected': 'bg-gray-100 text-gray-700 border-gray-300'
@@ -77,7 +79,7 @@
 
                 <!-- Stats Cards -->
                 ${stats && !stats.error ? `
-                <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
                     <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
                         <div class="flex items-center justify-between">
                             <div>
@@ -114,8 +116,8 @@
                     <div class="bg-white rounded-xl border border-blue-200 p-5 shadow-sm hover:shadow-md transition-shadow bg-gradient-to-br from-blue-50 to-white">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-sm font-medium text-blue-600">已解决</p>
-                                <p class="text-2xl font-bold text-blue-700 mt-1">${stats.resolved}</p>
+                                <p class="text-sm font-medium text-blue-600">已修复</p>
+                                <p class="text-2xl font-bold text-blue-700 mt-1">${stats.fixed}</p>
                             </div>
                             <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
                                 <i class="fa-solid fa-check-circle text-blue-600 text-lg"></i>
@@ -125,7 +127,7 @@
                     <div class="bg-white rounded-xl border border-emerald-200 p-5 shadow-sm hover:shadow-md transition-shadow bg-gradient-to-br from-emerald-50 to-white">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-sm font-medium text-emerald-600">已关闭</p>
+                                <p class="text-sm font-medium text-emerald-600">已验证</p>
                                 <p class="text-2xl font-bold text-emerald-700 mt-1">${stats.closed}</p>
                             </div>
                             <div class="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
@@ -160,8 +162,8 @@
                             <option value="">全部状态</option>
                             <option value="open">待处理</option>
                             <option value="in_progress">处理中</option>
-                            <option value="resolved">已解决</option>
-                            <option value="closed">已关闭</option>
+                            <option value="fixed">已修复</option>
+                            <option value="closed">已验证</option>
                             <option value="rejected">已拒绝</option>
                         </select>
                         <select id="bug-severity-filter" class="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all">
@@ -196,7 +198,7 @@
                             <div class="flex items-start justify-between gap-4">
                                 <div class="flex-1">
                                     <div class="flex items-center gap-3 mb-2">
-                                        <h3 class="text-lg font-semibold text-gray-900 group-hover:text-red-700 transition-colors">${bug.title}</h3>
+                                        <h3 class="text-lg font-semibold text-gray-900 group-hover:text-red-700 transition-colors">${bug.item_code ? `<span class="mr-2 text-red-600">${bug.item_code}</span>` : ''}${bug.title}</h3>
                                         <span class="px-2.5 py-1 text-xs font-semibold rounded-full border ${severityColors[bug.severity]}">${severityLabels[bug.severity]}</span>
                                         <span class="px-2.5 py-1 text-xs font-semibold rounded-full border ${statusColors[bug.status]}">${statusLabels[bug.status]}</span>
                                         ${(bug.evidence_count || 0) > 0 ? `<span class="px-2.5 py-1 text-xs font-semibold rounded-full border border-orange-200 bg-orange-50 text-orange-700"><i class="fa-solid fa-camera mr-1"></i>${bug.evidence_count} 条证据</span>` : ''}

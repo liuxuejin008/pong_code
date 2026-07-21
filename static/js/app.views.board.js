@@ -96,7 +96,7 @@
                     <div class="mb-2">
                         <div class="flex items-center gap-1.5 mb-1">
                             ${isBug ? `<i class="fa-solid fa-bug text-red-500 text-[10px]"></i>` : ''}
-                            <h4 class="text-xs font-semibold text-gray-900 leading-tight ${isBug ? 'pr-5 group-hover:text-red-700' : 'pr-12 group-hover:text-purple-700'} transition-colors line-clamp-2">${i.title}</h4>
+                            <h4 class="text-xs font-semibold text-gray-900 leading-tight ${isBug ? 'pr-5 group-hover:text-red-700' : 'pr-12 group-hover:text-purple-700'} transition-colors line-clamp-2">${i.item_code ? `<span class="mr-1 font-bold ${isBug ? 'text-red-600' : 'text-purple-600'}">${i.item_code}</span>` : ''}${i.title}</h4>
                         </div>
                     </div>
 
@@ -385,7 +385,7 @@
                                     const bugStatusMap = {
                                         'todo': 'open',
                                         'doing': 'in_progress',
-                                        'done': 'resolved'
+                                        'done': 'closed'
                                     };
                                     const updateData = { status: bugStatusMap[newStatus] };
                                     if (oldSwimlane !== newSwimlane) {

@@ -73,7 +73,7 @@ def get_workbench():
             Bug.assignee_id == current_user.id,
             Bug.reporter_id == current_user.id
         ),
-        Bug.status.in_(['in_progress', 'open'])
+        Bug.status.in_(['in_progress', 'fixed', 'resolved', 'open'])
     ).all()
     bugs.sort(key=lambda item: (0 if item.status == 'in_progress' else 1, item.severity, item.id))
 

@@ -6,6 +6,7 @@ from flask_login import current_user, login_required
 from extensions import db
 from models import User, Issue, Project, Sprint, WorkLog, organization_members
 from routes.input_utils import parse_nullable_int, parse_int, parse_float, parse_date
+from routes.item_codes import allocate_item_code
 
 bp = Blueprint('issues', __name__, url_prefix='/api')
 
@@ -46,10 +47,9 @@ def create_issue(project_id):
         sprint_id = parse_nullable_int(data.get('sprint_id'), 'sprint_id')
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
-    if sprint_id is not None:
-        sprint = Sprint.query.filter_by(id=sprint_id, project_id=project_id).first()
-        if not sprint:
-            return jsonify({'error': '未找到该迭代'}), 404
+    item_code, sprint_error = allocate_item_code(sprint_id, project_id)
+    if sprint_error:
+        return jsonify({'error': sprint_error}), 404
     # 泳道快速创建任务没有负责人输入，默认归属给创建人，便于后续工时按负责人统计。
     if assignee_id is None:
         assignee_id = current_user.id
@@ -62,7 +62,8 @@ def create_issue(project_id):
         assignee_id=assignee_id,
         project_id=project_id,
         sprint_id=sprint_id,
-        requirement_id=requirement_id
+        requirement_id=requirement_id,
+        item_code=item_code
     )
     db.session.add(issue)
     db.session.commit()

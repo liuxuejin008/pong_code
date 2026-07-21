@@ -165,8 +165,8 @@
                                 <select name="status" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
                                     <option value="open" selected>待处理</option>
                                     <option value="in_progress">处理中</option>
-                                    <option value="resolved">已解决</option>
-                                    <option value="closed">已关闭</option>
+                                    <option value="fixed">已修复</option>
+                                    <option value="closed">已验证</option>
                                     <option value="rejected">已拒绝</option>
                                 </select>
                             </div>
@@ -248,14 +248,16 @@
         const statusLabels = {
             'open': '待处理',
             'in_progress': '处理中',
-            'resolved': '已解决',
-            'closed': '已关闭',
+            'fixed': '已修复',
+            'resolved': '已修复',
+            'closed': '已验证',
             'rejected': '已拒绝'
         };
 
         const statusColors = {
             'open': 'bg-red-100 text-red-700',
             'in_progress': 'bg-purple-100 text-purple-700',
+            'fixed': 'bg-blue-100 text-blue-700',
             'resolved': 'bg-blue-100 text-blue-700',
             'closed': 'bg-emerald-100 text-emerald-700',
             'rejected': 'bg-gray-100 text-gray-700'
@@ -477,8 +479,8 @@
                                 <select name="status" class="block w-full rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-0 py-2.5 px-4 text-sm bg-white">
                                     <option value="open" ${bug.status === 'open' ? 'selected' : ''}>待处理</option>
                                     <option value="in_progress" ${bug.status === 'in_progress' ? 'selected' : ''}>处理中</option>
-                                    <option value="resolved" ${bug.status === 'resolved' ? 'selected' : ''}>已解决</option>
-                                    <option value="closed" ${bug.status === 'closed' ? 'selected' : ''}>已关闭</option>
+                                    <option value="fixed" ${bug.status === 'fixed' || bug.status === 'resolved' ? 'selected' : ''}>已修复</option>
+                                    <option value="closed" ${bug.status === 'closed' ? 'selected' : ''}>已验证</option>
                                     <option value="rejected" ${bug.status === 'rejected' ? 'selected' : ''}>已拒绝</option>
                                 </select>
                             </div>

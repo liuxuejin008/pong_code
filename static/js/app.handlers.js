@@ -679,7 +679,14 @@
                     }
                 }
                 this.modals.close();
-                this.navigate('bugs', { id: projectId });
+                if (this.currentView === 'board') {
+                    this.navigate('board', {
+                        id: projectId,
+                        ...(this.currentSprintId ? { sprintId: this.currentSprintId } : {})
+                    });
+                } else {
+                    this.navigate('bugs', { id: projectId });
+                }
             } else {
                 alert(res?.error || '创建缺陷失败，请重试');
                 btn.disabled = false;
