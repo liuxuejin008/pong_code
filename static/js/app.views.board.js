@@ -2,6 +2,47 @@
     const MiniAgile = window.MiniAgile = window.MiniAgile || {};
     MiniAgile.views = MiniAgile.views || {};
     const BOARD_HIDE_COMPLETED_STORAGE_KEY = 'pongcode:board:hide-completed';
+    const BOARD_COLLAPSED_SWIMLANES_STORAGE_PREFIX = 'pongcode:board:collapsed-swimlanes:v1';
+
+        function boardCollapsedSwimlanesStorageKey(userId, projectId, sprintId) {
+            return `${BOARD_COLLAPSED_SWIMLANES_STORAGE_PREFIX}:${userId || 'anonymous'}:${projectId}:${sprintId}`;
+        }
+
+        function readCollapsedSwimlanes(storageKey) {
+            try {
+                const value = JSON.parse(window.localStorage.getItem(storageKey) || '[]');
+                return new Set(Array.isArray(value) ? value : []);
+            } catch (error) {
+                console.warn('无法读取泳道折叠状态', error);
+                return new Set();
+            }
+        }
+
+        MiniAgile.views.toggleBoardSwimlane = function(button, userId, projectId, sprintId, swimlaneId) {
+            const swimlane = button.closest('.swimlane');
+            const content = swimlane?.querySelector('.swimlane-content');
+            if (!content) return;
+
+            const willCollapse = !content.classList.contains('hidden');
+            content.classList.toggle('hidden', willCollapse);
+            button.setAttribute('aria-expanded', willCollapse ? 'false' : 'true');
+            button.setAttribute('title', willCollapse ? '展开泳道' : '折叠泳道');
+            const icon = button.querySelector('i');
+            if (icon) {
+                icon.classList.toggle('fa-chevron-down', !willCollapse);
+                icon.classList.toggle('fa-chevron-right', willCollapse);
+            }
+
+            const storageKey = boardCollapsedSwimlanesStorageKey(userId, projectId, sprintId);
+            const collapsed = readCollapsedSwimlanes(storageKey);
+            if (willCollapse) collapsed.add(swimlaneId);
+            else collapsed.delete(swimlaneId);
+            try {
+                window.localStorage.setItem(storageKey, JSON.stringify([...collapsed]));
+            } catch (error) {
+                console.warn('无法保存泳道折叠状态', error);
+            }
+        };
 
         MiniAgile.views.toggleBoardCompletedCards = function(button, projectId, sprintId, enabled) {
             button.disabled = true;
@@ -76,6 +117,9 @@
             } catch (error) {
                 console.warn('无法读取看板显示偏好', error);
             }
+            const boardUserId = this.user?.id || 'anonymous';
+            const collapsedSwimlanesStorageKey = boardCollapsedSwimlanesStorageKey(boardUserId, id, sprintId);
+            const collapsedSwimlanes = readCollapsedSwimlanes(collapsedSwimlanesStorageKey);
 
             const renderCard = (i) => {
                 const isBug = i.item_type === 'bug';
@@ -86,24 +130,24 @@
                 <div class="bg-white p-3 rounded-lg border ${isBug ? 'border-red-200 hover:border-red-400' : 'border-gray-200 hover:border-purple-300'} shadow-sm cursor-move hover:shadow-md transition-all duration-200 group relative" data-id="${i.id}" data-item-type="${i.item_type || 'task'}" data-requirement-id="${i.requirement_id || ''}" ondblclick="${isBug ? `app.modals.editBug(${i.id})` : `app.modals.editIssue(${i.id})`}">
                     <div class="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                         <button type="button" data-action="quick-log-work" title="登记工时" aria-label="为${isBug ? '缺陷' : '任务'} ${i.title} 登记工时" onclick="event.stopPropagation(); ${isBug ? `app.modals.editBug(${i.id}, 'time')` : `app.modals.editIssue(${i.id}, 'time')`};" class="w-5 h-5 ${isBug ? 'bg-red-50 hover:bg-red-100 text-red-600' : 'bg-purple-50 hover:bg-purple-100 text-purple-600'} rounded flex items-center justify-center text-xs">
-                            <i class="fa-regular fa-clock text-[10px]"></i>
+                            <i class="fa-regular fa-clock" style="font-size:11px"></i>
                         </button>
                         <button onclick="${isBug ? `app.modals.editBug(${i.id})` : `app.modals.editIssue(${i.id})`}; event.stopPropagation();" class="w-5 h-5 ${isBug ? 'bg-red-50 hover:bg-red-100' : 'bg-gray-100 hover:bg-gray-200'} rounded flex items-center justify-center text-gray-500 text-xs">
-                            <i class="fa-solid fa-pen text-[10px]"></i>
+                            <i class="fa-solid fa-pen" style="font-size:11px"></i>
                         </button>
                     </div>
 
                     <div class="mb-2">
                         <div class="flex items-center gap-1.5 mb-1">
-                            ${isBug ? `<i class="fa-solid fa-bug text-red-500 text-[10px]"></i>` : ''}
-                            <h4 class="text-xs font-semibold text-gray-900 leading-tight ${isBug ? 'pr-5 group-hover:text-red-700' : 'pr-12 group-hover:text-purple-700'} transition-colors line-clamp-2">${i.item_code ? `<span class="mr-1 font-bold ${isBug ? 'text-red-600' : 'text-purple-600'}">${i.item_code}</span>` : ''}${i.title}</h4>
+                            ${isBug ? `<i class="fa-solid fa-bug text-red-500" style="font-size:11px"></i>` : ''}
+                            <h4 style="font-size:13.8px; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3" class="font-semibold text-gray-900 leading-tight ${isBug ? 'pr-5 group-hover:text-red-700' : 'pr-12 group-hover:text-purple-700'} transition-colors">${i.item_code ? `<span class="mr-1 font-bold ${isBug ? 'text-red-600' : 'text-purple-600'}">${i.item_code}</span>` : ''}${i.title}</h4>
                         </div>
                     </div>
 
                     <div class="flex flex-wrap justify-between items-center gap-1 pt-2 border-t ${isBug ? 'border-red-100' : 'border-gray-100'}">
                         <div class="flex flex-wrap items-center gap-1">
                             ${isBug ? `
-                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
+                                <span style="font-size:11px" class="inline-flex items-center px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border ${
                                     i.severity === 1 ? 'bg-red-100 text-red-700 border-red-300' :
                                     i.severity === 2 ? 'bg-orange-100 text-orange-700 border-orange-300' :
                                     i.severity === 3 ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
@@ -112,11 +156,11 @@
                                 }">
                                     ${severityLabels[i.severity] || 'S2'}
                                 </span>
-                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${(i.time_spent || 0) > (i.time_estimate || 0) && i.time_estimate > 0 ? 'bg-red-50 text-red-700' : 'bg-red-50 text-red-700'}">
+                                <span style="font-size:11px" class="inline-flex items-center px-1.5 py-0.5 rounded font-bold ${(i.time_spent || 0) > (i.time_estimate || 0) && i.time_estimate > 0 ? 'bg-red-50 text-red-700' : 'bg-red-50 text-red-700'}">
                                     <i class="fa-regular fa-clock mr-0.5"></i>${i.time_spent || 0}/${i.time_estimate || 0}h
                                 </span>
                             ` : `
-                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
+                                <span style="font-size:11px" class="inline-flex items-center px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border ${
                                     i.priority === 1 ? 'bg-red-50 text-red-700 border-red-200' :
                                     i.priority === 2 ? 'bg-orange-50 text-orange-700 border-orange-200' :
                                     i.priority === 3 ? 'bg-blue-50 text-blue-700 border-blue-200' :
@@ -124,17 +168,17 @@
                                 }">
                                     P${i.priority}
                                 </span>
-                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${i.time_spent > i.time_estimate ? 'bg-red-50 text-red-700' : 'bg-purple-50 text-purple-700'}">
+                                <span style="font-size:11px" class="inline-flex items-center px-1.5 py-0.5 rounded font-bold ${i.time_spent > i.time_estimate ? 'bg-red-50 text-red-700' : 'bg-purple-50 text-purple-700'}">
                                     <i class="fa-regular fa-clock mr-0.5"></i>${i.time_spent || 0}/${i.time_estimate || 0}h
                                 </span>
                                 ${String(i.description || '').trim() ? `
-                                    <span data-testid="task-description-indicator" class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-50 text-purple-700" title="该任务有描述" aria-label="该任务有描述">
+                                    <span data-testid="task-description-indicator" style="font-size:11px" class="inline-flex items-center justify-center px-1.5 py-0.5 rounded font-bold bg-purple-50 text-purple-700" title="该任务有描述" aria-label="该任务有描述">
                                         <i class="fa-regular fa-comment-dots"></i>
                                     </span>
                                 ` : ''}
                             `}
                         </div>
-                        <span data-testid="board-assignee-badge" class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold border break-all ${isBug ? 'bg-red-50 text-red-700 border-red-200' : 'bg-purple-50 text-purple-700 border-purple-200'}" title="负责人：${assigneeName}">
+                        <span data-testid="board-assignee-badge" style="font-size:11px" class="inline-flex items-center px-1.5 py-0.5 rounded font-bold border break-all ${isBug ? 'bg-red-50 text-red-700 border-red-200' : 'bg-purple-50 text-purple-700 border-purple-200'}" title="负责人：${assigneeName}">
                             <i class="fa-regular fa-user mr-0.5 shrink-0"></i>${assigneeName}
                         </span>
                     </div>
@@ -175,6 +219,7 @@
                 const req = swimlane.requirement;
                 const swimlaneId = req ? `req-${req.id}` : 'unassigned';
                 const swimlaneName = req ? req.title : '未分类';
+                const isCollapsed = collapsedSwimlanes.has(swimlaneId);
                 const swimlaneTaskCount = swimlane.todo.length + swimlane.doing.length + swimlane.done.length;
                 const swimlaneDoneCount = swimlane.done.length;
                 const swimlaneProgress = swimlaneTaskCount > 0 ? Math.round((swimlaneDoneCount / swimlaneTaskCount) * 100) : 0;
@@ -191,6 +236,9 @@
                         <!-- 泳道标题 -->
                         <div class="swimlane-header flex items-center justify-between px-4 py-3 bg-white/80 border-b border-gray-200">
                             <div class="flex items-center gap-3">
+                                <button type="button" data-testid="board-swimlane-toggle-${swimlaneId}" aria-expanded="${!isCollapsed}" aria-controls="board-swimlane-content-${swimlaneId}" title="${isCollapsed ? '展开泳道' : '折叠泳道'}" onclick="app.toggleBoardSwimlane(this, '${boardUserId}', ${id}, ${sprintId}, '${swimlaneId}')" class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-500 transition-colors hover:bg-purple-100 hover:text-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-200">
+                                    <i class="fa-solid ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'} text-[10px]"></i>
+                                </button>
                                 <div class="flex items-center gap-2">
                                     ${req ? `<span class="text-xs font-bold text-gray-500">P${req.priority}</span>` : ''}
                                     <h3 class="font-bold text-gray-800 text-sm">${swimlaneName}</h3>
@@ -210,7 +258,7 @@
                         </div>
                         
                         <!-- 泳道内容 - 三列 -->
-                        <div class="grid grid-cols-3 gap-3 p-3">
+                        <div id="board-swimlane-content-${swimlaneId}" class="swimlane-content grid grid-cols-3 gap-3 p-3${isCollapsed ? ' hidden' : ''}">
                             <!-- 待办列 -->
                             <div class="flex flex-col">
                                 <div class="flex items-center gap-1.5 mb-2 px-1">

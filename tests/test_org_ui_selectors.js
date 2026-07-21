@@ -375,11 +375,20 @@ test('需求列表与新建需求弹窗：按钮与主字段具备稳定 data-te
 
 test('看板：泳道容器使用唯一 test id，列通过局部作用域和 data-status 选择', async () => {
     const context = baseContext();
+    const storageReads = [];
+    context.window.localStorage.getItem = (key) => {
+        storageReads.push(key);
+        if (key === 'pongcode:board:collapsed-swimlanes:v1:42:7:1') {
+            return JSON.stringify(['req-10']);
+        }
+        return null;
+    };
     loadScript('static/js/app.views.board.js', context);
 
     let boardHtml = '';
 
     const fakeContext = {
+        user: { id: 42 },
         async api(url) {
             if (url.includes('/board')) {
                 return {
@@ -432,14 +441,66 @@ test('看板：泳道容器使用唯一 test id，列通过局部作用域和 da
     assert.equal(countTestId(boardHtml, 'create-issue-button'), 1, '看板新建任务按钮 test id 应唯一');
     assert.equal(countTestId(boardHtml, 'board-swimlane-req-10'), 1, '需求泳道应有唯一 test id');
     assert.equal(countTestId(boardHtml, 'board-swimlane-unassigned'), 1, '未分类泳道应有唯一 test id');
+    assert.equal(countTestId(boardHtml, 'board-swimlane-toggle-req-10'), 1, '需求泳道应有唯一折叠按钮');
+    assert.equal(countTestId(boardHtml, 'board-swimlane-toggle-unassigned'), 1, '未分类泳道应有唯一折叠按钮');
+    assert.match(boardHtml, /data-testid="board-swimlane-toggle-req-10"[^>]*aria-expanded="false"/, '已保存的折叠泳道应恢复折叠状态');
+    assert.match(boardHtml, /id="board-swimlane-content-req-10" class="[^"]* hidden"/, '折叠泳道内容应隐藏');
+    assert.match(boardHtml, /data-testid="board-swimlane-toggle-unassigned"[^>]*aria-expanded="true"/, '未折叠泳道应保持展开');
+    assert.ok(storageReads.includes('pongcode:board:collapsed-swimlanes:v1:42:7:1'), '折叠状态应按用户、项目和迭代读取');
     assert.equal(countTestId(boardHtml, 'board-column-todo'), 0, '列级别不应再复用相同 test id');
     assert.equal(countTestId(boardHtml, 'board-column-doing'), 0, '列级别不应再复用相同 test id');
     assert.equal(countTestId(boardHtml, 'board-column-done'), 0, '列级别不应再复用相同 test id');
     assert.match(boardHtml, /data-testid="board-swimlane-req-10"[\s\S]*data-status="todo"/, '应可在泳道作用域内通过 data-status 选待办列');
     assert.equal((boardHtml.match(/data-action="quick-log-work"/g) || []).length, 2, '任务和缺陷卡片都应显示工时登记快捷按钮');
+    assert.match(boardHtml, /<h4 style="font-size:13\.8px;[^\"]*-webkit-line-clamp:3"/, '任务和缺陷卡片标题应使用 13.8px 字号并支持三行');
+    assert.match(boardHtml, /data-testid="board-assignee-badge" style="font-size:11px"/, '卡片信息标签字号应增加至 11px');
     assert.match(boardHtml, /app\.modals\.editIssue\(21, 'time'\)/, '快捷按钮应直接打开任务工时页签');
     assert.match(boardHtml, /app\.modals\.editBug\(22, 'time'\)/, '缺陷快捷按钮应直接打开缺陷工时页签');
     assert.equal(countTestId(boardHtml, 'task-description-indicator'), 1, '有描述的任务卡片应显示评论图标');
+});
+
+test('看板：折叠泳道时更新界面并写入用户本地存储', () => {
+    const context = baseContext();
+    const storage = new Map();
+    context.window.localStorage.getItem = key => storage.get(key) || null;
+    context.window.localStorage.setItem = (key, value) => storage.set(key, value);
+    loadScript('static/js/app.views.board.js', context);
+
+    const contentClasses = new Set(['swimlane-content']);
+    const iconClasses = new Set(['fa-solid', 'fa-chevron-down']);
+    const attributes = {};
+    const content = {
+        classList: {
+            contains(name) { return contentClasses.has(name); },
+            toggle(name, enabled) {
+                if (enabled) contentClasses.add(name);
+                else contentClasses.delete(name);
+            }
+        }
+    };
+    const icon = {
+        classList: {
+            toggle(name, enabled) {
+                if (enabled) iconClasses.add(name);
+                else iconClasses.delete(name);
+            }
+        }
+    };
+    const button = {
+        closest() { return { querySelector() { return content; } }; },
+        querySelector() { return icon; },
+        setAttribute(name, value) { attributes[name] = value; }
+    };
+
+    context.window.MiniAgile.views.toggleBoardSwimlane(button, 42, 7, 1, 'req-10');
+
+    assert.ok(contentClasses.has('hidden'));
+    assert.equal(attributes['aria-expanded'], 'false');
+    assert.ok(iconClasses.has('fa-chevron-right'));
+    assert.deepEqual(
+        JSON.parse(storage.get('pongcode:board:collapsed-swimlanes:v1:42:7:1')),
+        ['req-10']
+    );
 });
 
 test('编辑任务弹窗：支持直接打开工时页签', async () => {
