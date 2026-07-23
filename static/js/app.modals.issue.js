@@ -2,6 +2,11 @@
     const MiniAgile = window.MiniAgile = window.MiniAgile || {};
     MiniAgile.modals = MiniAgile.modals || {};
 
+    const CARD_ITEM_MODAL_OPTIONS = {
+        contentClass: 'max-h-[90vh] overflow-y-auto',
+        contentStyle: 'width:min(94vw, 38.4rem); max-width:min(94vw, 38.4rem)'
+    };
+
         MiniAgile.modals.modalCreateIssue = async function(projectId, defaultRequirementId = null, sprintId = null) {
             // 获取当前迭代的需求列表（带 sprintId 以匹配当前看板所属迭代）
             const boardData = await this.api(`/projects/${projectId}/board${sprintId ? `?sprint_id=${sprintId}` : ''}`);
@@ -254,7 +259,7 @@
                         </div>
                     </div>
                 </div>
-            `);
+            `, CARD_ITEM_MODAL_OPTIONS);
         };
 
 })();
