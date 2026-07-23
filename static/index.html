@@ -370,6 +370,10 @@
             transform: scale(1.05);
             cursor: grabbing;
         }
+        body.is-dragging * {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+        }
     </style>
 </head>
 <body id="app" class="text-gray-800 h-screen flex overflow-hidden">
