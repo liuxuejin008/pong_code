@@ -278,7 +278,11 @@
                                 updateEmptyState(evt.from);
                             }
                         },
+                        onStart: function () {
+                            document.body.classList.add('is-dragging');
+                        },
                         onEnd: async function (evt) {
+                            document.body.classList.remove('is-dragging');
                             const newStatus = evt.to.getAttribute('data-status');
                             const newSwimlane = evt.to.getAttribute('data-swimlane');
                             const itemId = evt.item.getAttribute('data-id');
