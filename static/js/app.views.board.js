@@ -127,8 +127,12 @@
                 const assigneeName = i.assignee_name || i.reporter_name || '未分配';
                 
                 return `
-                <div class="bg-white p-3 rounded-lg border ${isBug ? 'border-red-200 hover:border-red-400' : 'border-gray-200 hover:border-purple-300'} shadow-sm cursor-move hover:shadow-md transition-all duration-200 group relative" data-id="${i.id}" data-item-type="${i.item_type || 'task'}" data-requirement-id="${i.requirement_id || ''}" ondblclick="${isBug ? `app.modals.editBug(${i.id})` : `app.modals.editIssue(${i.id})`}">
+                <div class="bg-white p-3 rounded-lg border ${isBug ? 'border-red-200 hover:border-red-400' : 'border-gray-200 hover:border-purple-300'} shadow-sm cursor-move hover:shadow-md transition-all duration-200 group relative" data-id="${i.id}" data-item-type="${i.item_type || 'task'}" data-requirement-id="${i.requirement_id || ''}" ondblclick="${isBug ? `app.modals.viewBug(${i.id})` : `app.modals.editIssue(${i.id})`}">
                     <div class="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        ${isBug ? `
+                        <button type="button" data-action="view-bug" title="查看" aria-label="查看缺陷 ${i.title}" onclick="event.stopPropagation(); app.modals.viewBug(${i.id});" class="w-5 h-5 bg-red-50 hover:bg-red-100 text-red-600 rounded flex items-center justify-center text-xs">
+                            <i class="fa-regular fa-file-lines" style="font-size:11px"></i>
+                        </button>` : ''}
                         <button type="button" data-action="quick-log-work" title="登记工时" aria-label="为${isBug ? '缺陷' : '任务'} ${i.title} 登记工时" onclick="event.stopPropagation(); ${isBug ? `app.modals.editBug(${i.id}, 'time')` : `app.modals.editIssue(${i.id}, 'time')`};" class="w-5 h-5 ${isBug ? 'bg-red-50 hover:bg-red-100 text-red-600' : 'bg-purple-50 hover:bg-purple-100 text-purple-600'} rounded flex items-center justify-center text-xs">
                             <i class="fa-regular fa-clock" style="font-size:11px"></i>
                         </button>
@@ -140,7 +144,7 @@
                     <div class="mb-2">
                         <div class="flex items-center gap-1.5 mb-1">
                             ${isBug ? `<i class="fa-solid fa-bug text-red-500" style="font-size:11px"></i>` : ''}
-                            <h4 style="font-size:13.8px; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3" class="font-semibold text-gray-900 leading-tight ${isBug ? 'pr-5 group-hover:text-red-700' : 'pr-12 group-hover:text-purple-700'} transition-colors">${i.item_code ? `<span class="mr-1 font-bold ${isBug ? 'text-red-600' : 'text-purple-600'}">${i.item_code}</span>` : ''}${i.title}</h4>
+                            <h4 style="font-size:13.8px; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3" class="font-semibold text-gray-900 leading-tight ${isBug ? 'pr-16 group-hover:text-red-700' : 'pr-12 group-hover:text-purple-700'} transition-colors">${i.item_code ? `<span class="mr-1 font-bold ${isBug ? 'text-red-600' : 'text-purple-600'}">${i.item_code}</span>` : ''}${i.title}</h4>
                         </div>
                     </div>
 

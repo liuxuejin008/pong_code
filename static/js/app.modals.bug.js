@@ -54,6 +54,11 @@
         });
     }
 
+    const CARD_ITEM_MODAL_OPTIONS = {
+        contentClass: 'max-h-[90vh] overflow-y-auto',
+        contentStyle: 'width:min(94vw, 38.4rem); max-width:min(94vw, 38.4rem)'
+    };
+
     function renderEvidenceTimeline(evidences) {
         if (!evidences || evidences.length === 0) {
             return `
@@ -402,7 +407,7 @@
                     <button type="button" onclick="app.modals.close()" class="px-5 py-2.5 text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-100 rounded-lg transition-colors">关闭</button>
                 </div>
             </div>
-        `);
+        `, CARD_ITEM_MODAL_OPTIONS);
     };
 
     MiniAgile.modals.modalEditBug = async function(bugId, initialTab = 'details') {
@@ -592,7 +597,7 @@
                     </div>
                 </div>
             </div>
-        `);
+        `, CARD_ITEM_MODAL_OPTIONS);
     };
 
     MiniAgile.modals.modalAddBugEvidence = async function(bugId) {
