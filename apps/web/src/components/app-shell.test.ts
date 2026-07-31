@@ -233,6 +233,14 @@ describe('应用外壳', () => {
         .get('[data-testid="desktop-sprint-switcher-menu"]')
         .findAll('[data-testid^="desktop-sprint-switcher-option-"]')
         .map(option => option.text()),
+    ).toEqual(['迭代 1进行中', '迭代 2未开始'])
+    expect(wrapper.get('[data-testid="desktop-sprint-switcher-toggle"]').text()).toContain('显示已完成（1）')
+    await wrapper.get('[data-testid="desktop-sprint-switcher-toggle"]').trigger('click')
+    expect(
+      wrapper
+        .get('[data-testid="desktop-sprint-switcher-menu"]')
+        .findAll('[data-testid^="desktop-sprint-switcher-option-"]')
+        .map(option => option.text()),
     ).toEqual(['迭代 1进行中', '迭代 2未开始', '迭代 3已完成'])
     expect(wrapper.text()).toContain('项目空间')
     expect(wrapper.find('[data-testid="sidebar-project-switcher"]').exists()).toBe(false)

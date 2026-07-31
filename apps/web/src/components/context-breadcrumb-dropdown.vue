@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, Search, Setting } from '@element-plus/icons-vue'
+import { ArrowDown, Check, Close, Search, Setting } from '@element-plus/icons-vue'
 import { computed, ref } from 'vue'
 import { getStatusType, type StatusType } from '@/shared/status'
 
@@ -8,6 +8,7 @@ export interface ContextBreadcrumbOption {
   label: string
   meta?: string
   status?: string
+  group?: string
 }
 
 const props = withDefaults(defineProps<{
@@ -20,14 +21,22 @@ const props = withDefaults(defineProps<{
   emptyLabel: string
   testId: string
   maxWidth?: number
+  filterLabel?: string
+  toggleLabel?: string
+  toggleValue?: boolean
 }>(), {
   loading: false,
   maxWidth: 176,
+  filterLabel: '',
+  toggleLabel: '',
+  toggleValue: false,
 })
 
 const emit = defineEmits<{
   select: [value: number]
   manage: []
+  'clear-filter': []
+  'update:toggleValue': [value: boolean]
 }>()
 
 const search = ref('')
@@ -37,9 +46,18 @@ const filteredOptions = computed(() => {
   if (!keyword)
     return props.options
   return props.options.filter(option => (
-    `${option.label} ${option.meta || ''}`.toLocaleLowerCase().includes(keyword)
+    `${option.label} ${option.meta || ''} ${option.group || ''}`.toLocaleLowerCase().includes(keyword)
   ))
 })
+const distinctGroupCount = computed(() => {
+  const groups = new Set<string>()
+  for (const option of props.options) {
+    if (option.group)
+      groups.add(option.group)
+  }
+  return groups.size
+})
+const showGroupHeaders = computed(() => distinctGroupCount.value >= 2)
 const statusColors: Record<StatusType, string> = {
   success: 'var(--el-color-success)',
   warning: 'var(--el-color-warning)',
@@ -126,6 +144,22 @@ function handleMenuWheel(event: WheelEvent) {
           @wheel="handleMenuWheel"
         >
           <div class="pc-context-menu__header px-2 pt-1 pb-2" @click.stop @keydown.stop>
+            <div
+              v-if="filterLabel"
+              class="pc-context-menu__filter-chip"
+              :data-testid="`${testId}-filter-chip`"
+            >
+              <span class="min-w-0 truncate">{{ filterLabel }}</span>
+              <button
+                type="button"
+                class="pc-context-menu__filter-clear"
+                :aria-label="`清除${contextName}过滤`"
+                :data-testid="`${testId}-clear-filter`"
+                @click.stop="emit('clear-filter')"
+              >
+                <el-icon><Close /></el-icon>
+              </button>
+            </div>
             <el-input
               v-model="search"
               clearable
@@ -134,29 +168,50 @@ function handleMenuWheel(event: WheelEvent) {
               :placeholder="`搜索${contextName}`"
               @click.stop
             />
+            <button
+              v-if="toggleLabel"
+              type="button"
+              class="pc-context-menu__toggle"
+              :data-testid="`${testId}-toggle`"
+              :aria-pressed="toggleValue ? 'true' : 'false'"
+              @click.stop="emit('update:toggleValue', !toggleValue)"
+            >
+              <span class="pc-context-menu__toggle-box" :class="{ 'is-on': toggleValue }">
+                <el-icon v-if="toggleValue"><Check /></el-icon>
+              </span>
+              <span class="min-w-0 truncate">{{ toggleLabel }}</span>
+            </button>
           </div>
           <div
             ref="scrollBodyRef"
             class="pc-context-menu__body"
             data-testid="context-menu-scroll-body"
           >
-            <el-dropdown-item
-              v-for="option in filteredOptions"
-              :key="option.value"
-              :command="option.value"
-              :class="{ 'pc-context-menu__item--selected': option.value === modelValue }"
-              :aria-current="option.value === modelValue ? 'true' : undefined"
-              :data-testid="`${testId}-option-${option.value}`"
-            >
-              <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
-              <small
-                v-if="option.meta"
-                class="ml-3 shrink-0 text-xs"
-                :style="getMetaStyle(option.status)"
+            <template v-for="(option, index) in filteredOptions" :key="option.value">
+              <div
+                v-if="showGroupHeaders && option.group && option.group !== (filteredOptions[index - 1]?.group ?? '')"
+                class="pc-context-menu__group-header"
+                :data-testid="`${testId}-group-${option.group}`"
+                @click.stop
               >
-                {{ option.meta }}
-              </small>
-            </el-dropdown-item>
+                {{ option.group }}
+              </div>
+              <el-dropdown-item
+                :command="option.value"
+                :class="{ 'pc-context-menu__item--selected': option.value === modelValue }"
+                :aria-current="option.value === modelValue ? 'true' : undefined"
+                :data-testid="`${testId}-option-${option.value}`"
+              >
+                <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
+                <small
+                  v-if="option.meta"
+                  class="ml-3 shrink-0 text-xs"
+                  :style="getMetaStyle(option.status)"
+                >
+                  {{ option.meta }}
+                </small>
+              </el-dropdown-item>
+            </template>
             <div
               v-if="!filteredOptions.length"
               class="px-3 py-2 text-sm text-[var(--pc-text-muted)]"
@@ -221,5 +276,89 @@ function handleMenuWheel(event: WheelEvent) {
 :global(.pc-context-menu .el-dropdown-menu__item.pc-context-menu__item--selected) {
   color: var(--pc-action);
   font-weight: 600;
+}
+
+:global(.pc-context-menu .pc-context-menu__group-header) {
+  padding: 8px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--pc-text-muted);
+  background: var(--el-bg-color-overlay);
+  cursor: default;
+}
+
+:global(.pc-context-menu .pc-context-menu__group-header:not(:first-child)) {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pc-border-soft);
+}
+
+:global(.pc-context-menu__filter-chip) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+  padding: 2px 4px 2px 8px;
+  font-size: 12px;
+  color: var(--pc-action);
+  background: var(--pc-surface-soft);
+  border-radius: var(--pc-radius-sm);
+}
+
+:global(.pc-context-menu__filter-clear) {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pc-radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+:global(.pc-context-menu__filter-clear:hover) {
+  background: var(--el-color-primary-light-8);
+}
+
+:global(.pc-context-menu__toggle) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 2px 2px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  color: var(--pc-text-secondary);
+  cursor: pointer;
+}
+
+:global(.pc-context-menu__toggle:hover) {
+  color: var(--pc-action);
+}
+
+:global(.pc-context-menu__toggle-box) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 1px solid var(--pc-border);
+  border-radius: 3px;
+  background: var(--el-bg-color-overlay);
+  color: #fff;
+  font-size: 10px;
+}
+
+:global(.pc-context-menu__toggle-box.is-on) {
+  background: var(--pc-action);
+  border-color: var(--pc-action);
 }
 </style>

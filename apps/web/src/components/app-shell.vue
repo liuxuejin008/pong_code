@@ -19,7 +19,7 @@ import {
 } from '@element-plus/icons-vue'
 import { isAxiosError } from 'axios'
 import { ElMessage } from 'element-plus'
-import { computed, provide, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { Organization } from '@/api/types'
 import AppDialog from '@/components/app-dialog.vue'
@@ -111,20 +111,91 @@ const organizationMenuOptions = computed<ContextBreadcrumbOption[]>(() => (
     label: organization.name,
   }))
 ))
-const projectMenuOptions = computed<ContextBreadcrumbOption[]>(() => (
-  projectOptions.value.map(project => ({
+const UNGROUPED_TEAM_LABEL = '未分组'
+const savedTeamFilterId = ref<number | null>(null)
+const savedTeamFilterStorageKey = computed(() => {
+  const userId = auth.user?.id
+  if (!userId || !orgId.value)
+    return ''
+  return `pongcode:project-team-filter:${userId}:${orgId.value}`
+})
+function readSavedTeamFilter() {
+  const key = savedTeamFilterStorageKey.value
+  if (!key) {
+    savedTeamFilterId.value = null
+    return
+  }
+  const raw = localStorage.getItem(key)
+  const id = raw ? Number(raw) : NaN
+  savedTeamFilterId.value = Number.isFinite(id) && id > 0 ? id : null
+}
+function onTeamFilterStorageChange(event: StorageEvent) {
+  if (!event.key || !event.key.startsWith('pongcode:project-team-filter:'))
+    return
+  readSavedTeamFilter()
+}
+watch(savedTeamFilterStorageKey, readSavedTeamFilter, { immediate: true })
+watch(() => route.fullPath, readSavedTeamFilter)
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', onTeamFilterStorageChange)
+  onBeforeUnmount(() => window.removeEventListener('storage', onTeamFilterStorageChange))
+}
+const savedTeamFilterLabel = computed(() => {
+  const id = savedTeamFilterId.value
+  if (id === null)
+    return ''
+  const team = currentOrganizationDetails.value?.teams.find(item => item.id === id)
+  return team?.name?.trim() ? `团队：${team.name.trim()}` : ''
+})
+function clearProjectTeamFilter() {
+  const key = savedTeamFilterStorageKey.value
+  if (key)
+    localStorage.removeItem(key)
+  savedTeamFilterId.value = null
+}
+const projectMenuOptions = computed<ContextBreadcrumbOption[]>(() => {
+  const teamId = savedTeamFilterId.value
+  const projects = teamId === null
+    ? [...projectOptions.value]
+    : projectOptions.value.filter(project => (
+        project.team_id === teamId || project.id === projectId.value
+      ))
+  const sorted = [...projects].sort((left, right) => {
+    const leftRank = left.team_id ?? Number.POSITIVE_INFINITY
+    const rightRank = right.team_id ?? Number.POSITIVE_INFINITY
+    if (leftRank !== rightRank)
+      return leftRank - rightRank
+    return left.id - right.id
+  })
+  return sorted.map(project => ({
     value: project.id,
     label: project.name,
+    group: project.team_name?.trim() || UNGROUPED_TEAM_LABEL,
   }))
+})
+const showClosedSprints = ref(false)
+watch(projectId, () => {
+  showClosedSprints.value = false
+})
+const closedSprintCount = computed(() => (
+  sprintOptions.value.filter(sprint => sprint.status === 'closed').length
 ))
-const sprintMenuOptions = computed<ContextBreadcrumbOption[]>(() => (
-  sprintOptions.value.map(sprint => ({
-    value: sprint.id,
-    label: sprint.name,
-    meta: sprint.status_label,
-    status: sprint.status,
-  }))
+const sprintToggleLabel = computed(() => (
+  closedSprintCount.value > 0 ? `显示已完成（${closedSprintCount.value}）` : ''
 ))
+const sprintMenuOptions = computed<ContextBreadcrumbOption[]>(() => {
+  const currentId = selectedSprintId.value
+  return sprintOptions.value
+    .filter(sprint => (
+      showClosedSprints.value || sprint.status !== 'closed' || sprint.id === currentId
+    ))
+    .map(sprint => ({
+      value: sprint.id,
+      label: sprint.name,
+      meta: sprint.status_label,
+      status: sprint.status,
+    }))
+})
 const avatarStyle = computed(() => {
   const color = getUserAvatarColor(auth.user?.username ?? '')
 
@@ -628,8 +699,10 @@ async function logout() {
                     empty-label="暂无项目"
                     test-id="desktop-project-switcher"
                     :max-width="168"
+                    :filter-label="savedTeamFilterLabel"
                     @select="switchProject"
                     @manage="manageProjects"
+                    @clear-filter="clearProjectTeamFilter"
                   />
                 </template>
                 <template v-if="isBoard">
@@ -644,6 +717,8 @@ async function logout() {
                     empty-label="暂无迭代"
                     test-id="desktop-sprint-switcher"
                     :max-width="168"
+                    :toggle-label="sprintToggleLabel"
+                    v-model:toggle-value="showClosedSprints"
                     @select="switchSprint"
                     @manage="manageSprints"
                   />
@@ -752,8 +827,10 @@ async function logout() {
               empty-label="暂无项目"
               test-id="mobile-project-switcher"
               :max-width="190"
+              :filter-label="savedTeamFilterLabel"
               @select="switchProject"
               @manage="manageProjects"
+              @clear-filter="clearProjectTeamFilter"
             />
           </template>
           <template v-if="isBoard">
@@ -768,6 +845,8 @@ async function logout() {
               empty-label="暂无迭代"
               test-id="mobile-sprint-switcher"
               :max-width="190"
+              :toggle-label="sprintToggleLabel"
+              v-model:toggle-value="showClosedSprints"
               @select="switchSprint"
               @manage="manageSprints"
             />
