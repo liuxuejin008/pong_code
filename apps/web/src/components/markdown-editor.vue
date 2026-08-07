@@ -11,6 +11,7 @@ import { ElMessage } from 'element-plus'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { uploadMarkdownImages } from '@/api/uploads'
 import { apiErrorMessage } from '@/api/client'
+import { normalizeEscapedMarkdownLinks } from '@/shared/markdown'
 
 const advancedCommandIcon = (path: string) => `
   <svg class="markdown-command-advanced-icon" xmlns="http://www.w3.org/2000/svg"
@@ -61,13 +62,82 @@ const host = ref<HTMLDivElement | null>(null)
 const imageInput = ref<HTMLInputElement | null>(null)
 const ready = ref(false)
 const uploadingImage = ref(false)
-const markdownLength = ref(props.modelValue.length)
+const markdownLength = ref(normalizeEscapedMarkdownLinks(props.modelValue).length)
 
 let crepe: Crepe | undefined
 let acceptedMarkdown = props.modelValue
 let applyingExternalValue = false
 let disposed = false
 let revertingLengthOverflow = false
+
+interface PendingMarkdownLink {
+  start: number
+  end: number
+  label: string
+  href: string
+}
+
+function isEscapedCharacter(value: string, index: number) {
+  let slashCount = 0
+  for (let current = index - 1; current >= 0 && value[current] === '\\'; current--)
+    slashCount++
+  return slashCount % 2 === 1
+}
+
+function unescapeMarkdownPunctuation(value: string) {
+  return value.replace(/\\([^\w\s])/g, '$1')
+}
+
+function findPendingMarkdownLinks(value: string): PendingMarkdownLink[] {
+  const links: PendingMarkdownLink[] = []
+
+  for (let start = 0; start < value.length; start++) {
+    if (
+      value[start] !== '['
+      || isEscapedCharacter(value, start)
+      || value[start - 1] === '!'
+    ) {
+      continue
+    }
+
+    let labelEnd = start + 1
+    while (
+      labelEnd < value.length
+      && (value[labelEnd] !== ']' || isEscapedCharacter(value, labelEnd))
+    ) {
+      labelEnd++
+    }
+
+    if (value[labelEnd] !== ']' || value[labelEnd + 1] !== '(')
+      continue
+
+    let depth = 1
+    let hrefEnd = labelEnd + 2
+    for (; hrefEnd < value.length; hrefEnd++) {
+      if (isEscapedCharacter(value, hrefEnd))
+        continue
+      if (value[hrefEnd] === '(')
+        depth++
+      else if (value[hrefEnd] === ')')
+        depth--
+      if (depth === 0)
+        break
+    }
+
+    if (depth !== 0)
+      continue
+
+    const label = unescapeMarkdownPunctuation(value.slice(start + 1, labelEnd))
+    const href = unescapeMarkdownPunctuation(value.slice(labelEnd + 2, hrefEnd))
+    if (!label || !href)
+      continue
+
+    links.push({ start, end: hrefEnd + 1, label, href })
+    start = hrefEnd
+  }
+
+  return links
+}
 
 function editorElement() {
   return host.value?.querySelector<HTMLElement>('.ProseMirror')
@@ -85,8 +155,10 @@ function syncEditorAttributes() {
 
   editor.setAttribute('aria-label', props.placeholder)
   editor.setAttribute('aria-required', String(props.required))
-  editor.removeEventListener('keydown', handleEditorKeydown)
-  editor.addEventListener('keydown', handleEditorKeydown)
+  editor.removeEventListener('keydown', handleEditorKeydown, true)
+  editor.addEventListener('keydown', handleEditorKeydown, true)
+  editor.removeEventListener('focusout', commitPendingMarkdownLinks)
+  editor.addEventListener('focusout', commitPendingMarkdownLinks)
 }
 
 async function uploadImage(file: File) {
@@ -141,13 +213,39 @@ function insertCommandTrigger() {
 }
 
 function handleEditorKeydown(event: KeyboardEvent) {
-  if (event.key !== '\\' || !crepe || !ready.value)
+  if (!crepe || !ready.value || event.isComposing)
     return
+
+  if (event.key === 'Enter') {
+    commitPendingMarkdownLinks()
+    return
+  }
 
   crepe.editor.action((ctx) => {
     const view = ctx.get(editorViewCtx)
     const { selection } = view.state
     const currentBlock = selection.$from.parent
+
+    if (event.key === ')') {
+      const textBeforeCursor = currentBlock.textContent.slice(
+        0,
+        selection.$from.parentOffset,
+      )
+      const isTypingMarkdownLink = selection.empty
+        && ['paragraph', 'heading'].includes(currentBlock.type.name)
+        && /\[[^\]\n]+\]\([^\n]*$/.test(textBeforeCursor)
+
+      if (!isTypingMarkdownLink)
+        return
+
+      event.preventDefault()
+      view.dispatch(view.state.tr.insertText(')').scrollIntoView())
+      return
+    }
+
+    if (event.key !== '\\')
+      return
+
     const canOpenMenu = selection.empty
       && ['paragraph', 'heading'].includes(currentBlock.type.name)
       && currentBlock.content.size === 0
@@ -208,14 +306,60 @@ function restoreAcceptedMarkdown() {
   applyingExternalValue = true
   crepe.editor.action(replaceAll(acceptedMarkdown))
   applyingExternalValue = false
-  markdownLength.value = acceptedMarkdown.length
+  markdownLength.value = normalizeEscapedMarkdownLinks(acceptedMarkdown).length
+}
+
+function commitPendingMarkdownLinks() {
+  if (!crepe || !ready.value)
+    return
+
+  crepe.editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx)
+    const linkMark = view.state.schema.marks.link
+    if (!linkMark)
+      return
+
+    const replacements: Array<PendingMarkdownLink & { from: number, to: number }> = []
+    view.state.doc.descendants((node, position) => {
+      if (!node.isTextblock)
+        return true
+
+      for (const link of findPendingMarkdownLinks(node.textContent)) {
+        replacements.push({
+          ...link,
+          from: position + 1 + link.start,
+          to: position + 1 + link.end,
+        })
+      }
+      return false
+    })
+
+    if (replacements.length === 0)
+      return
+
+    let transaction = view.state.tr
+    for (const replacement of replacements.reverse()) {
+      const linkText = view.state.schema.text(
+        replacement.label,
+        [linkMark.create({ href: replacement.href })],
+      )
+      transaction = transaction.replaceWith(
+        replacement.from,
+        replacement.to,
+        linkText,
+      )
+    }
+    view.dispatch(transaction.scrollIntoView())
+  })
 }
 
 function handleMarkdownUpdate(markdown: string) {
   if (applyingExternalValue)
     return
 
-  if (props.maxLength && markdown.length > props.maxLength) {
+  const normalizedLength = normalizeEscapedMarkdownLinks(markdown).length
+
+  if (props.maxLength && normalizedLength > props.maxLength) {
     if (!revertingLengthOverflow) {
       revertingLengthOverflow = true
       ElMessage.warning(`最多输入 ${props.maxLength} 个字符`)
@@ -228,7 +372,7 @@ function handleMarkdownUpdate(markdown: string) {
   }
 
   acceptedMarkdown = markdown
-  markdownLength.value = markdown.length
+  markdownLength.value = normalizedLength
   emit('update:modelValue', markdown)
 }
 
@@ -251,7 +395,6 @@ onMounted(async () => {
       },
       [Crepe.Feature.ImageBlock]: {
         onUpload: uploadImage,
-        inlineConfirmButton: '确认',
         inlineUploadButton: '上传图片',
         inlineUploadPlaceholderText: '或粘贴图片地址',
         blockConfirmButton: '确认',
@@ -260,9 +403,6 @@ onMounted(async () => {
         blockUploadPlaceholderText: '或粘贴图片地址',
       },
       [Crepe.Feature.LinkTooltip]: {
-        editButton: '编辑链接',
-        removeButton: '移除链接',
-        confirmButton: '确认',
         inputPlaceholder: '粘贴链接地址',
       },
       [Crepe.Feature.BlockEdit]: {
@@ -293,7 +433,10 @@ onMounted(async () => {
         },
       },
       [Crepe.Feature.CodeMirror]: {
+        copyText: '复制',
+        noResultText: '未找到语言',
         previewToggleText: previewOnly => previewOnly ? '编辑代码' : '预览代码',
+        searchPlaceholder: '搜索语言',
       },
     },
   })
@@ -318,14 +461,15 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   disposed = true
-  editorElement()?.removeEventListener('keydown', handleEditorKeydown)
+  editorElement()?.removeEventListener('keydown', handleEditorKeydown, true)
+  editorElement()?.removeEventListener('focusout', commitPendingMarkdownLinks)
   if (crepe)
     void crepe.destroy()
 })
 
 watch(() => props.modelValue, (next) => {
   acceptedMarkdown = next
-  markdownLength.value = next.length
+  markdownLength.value = normalizeEscapedMarkdownLinks(next).length
 
   if (!crepe || !ready.value || crepe.getMarkdown() === next)
     return
@@ -490,8 +634,8 @@ watch(
 .markdown-editor :deep(.milkdown) {
   --crepe-color-background: var(--pc-surface);
   --crepe-color-on-background: var(--pc-text);
-  --crepe-color-surface: var(--pc-surface-soft);
-  --crepe-color-surface-low: var(--pc-border-soft);
+  --crepe-color-surface: var(--pc-surface);
+  --crepe-color-surface-low: var(--pc-surface-soft);
   --crepe-color-on-surface: var(--pc-text);
   --crepe-color-on-surface-variant: var(--pc-text-secondary);
   --crepe-color-outline: var(--pc-border);
@@ -508,6 +652,8 @@ watch(
   --crepe-font-title: inherit;
   --crepe-font-default: inherit;
   --crepe-font-code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --crepe-shadow-1: 0 2px 8px rgb(0 0 0 / 14%);
+  --crepe-shadow-2: 0 4px 14px rgb(0 0 0 / 16%);
   min-height: var(--markdown-editor-min-height);
   border-radius: inherit;
 }
@@ -526,6 +672,45 @@ watch(
   padding: 2px 0;
   font-size: 14px;
   line-height: 1.65;
+}
+
+.markdown-editor :deep(.milkdown .ProseMirror a) {
+  color: var(--pc-action);
+  text-decoration: none;
+}
+
+.markdown-editor :deep(.milkdown .ProseMirror a:hover) {
+  text-decoration: underline;
+}
+
+.markdown-editor :deep(.milkdown .ProseMirror blockquote) {
+  margin: 8px 0;
+  border-left: 3px solid var(--pc-border);
+  padding: 3px 0 3px 12px;
+  color: var(--pc-text-secondary);
+}
+
+.markdown-editor :deep(.milkdown .ProseMirror blockquote p) {
+  margin: 0;
+}
+
+.markdown-editor :deep(.milkdown .ProseMirror :not(pre) > code) {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--pc-text) 8%, transparent);
+  padding: 0.15em 0.35em;
+  color: var(--pc-danger);
+  font-size: 0.9em;
+}
+
+.markdown-editor :deep(.milkdown .ProseMirror hr) {
+  margin: 14px 0;
+  border: 0;
+  border-top: 1px solid var(--pc-border);
+}
+
+.markdown-editor :deep(.milkdown .ProseMirror ul),
+.markdown-editor :deep(.milkdown .ProseMirror ol) {
+  padding-left: 1.6em;
 }
 
 .markdown-editor :deep(.milkdown .ProseMirror h1),
@@ -563,8 +748,8 @@ watch(
 
 .markdown-editor :deep(.milkdown .ProseMirror pre) {
   overflow: auto;
-  background: #171719;
-  color: #f5f5f7;
+  background: transparent;
+  color: var(--pc-text);
 }
 
 .markdown-editor :deep(.milkdown .ProseMirror img) {
@@ -684,6 +869,341 @@ watch(
 .markdown-editor :deep(.milkdown .milkdown-slash-menu li.active) {
   background: color-mix(in srgb, var(--pc-action) 10%, var(--pc-surface));
   color: var(--pc-action);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-toolbar),
+.markdown-editor :deep(.milkdown .milkdown-link-preview > .link-preview),
+.markdown-editor :deep(.milkdown .milkdown-link-edit > .link-edit),
+.markdown-editor :deep(.milkdown .milkdown-code-block .list-wrapper),
+.markdown-editor :deep(.milkdown .milkdown-image-inline .empty-image-inline) {
+  border: 1px solid var(--pc-border-soft);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-surface);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 14%);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-toolbar) {
+  gap: 2px;
+  padding: 4px;
+  overflow: visible;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-toolbar .toolbar-item) {
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  border-radius: 4px;
+  padding: 5px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-toolbar .toolbar-item svg) {
+  width: 18px;
+  height: 18px;
+  color: var(--pc-text-secondary);
+  fill: currentcolor;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-toolbar .toolbar-item:hover) {
+  background: var(--pc-surface-soft);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-toolbar .toolbar-item:hover svg),
+.markdown-editor :deep(.milkdown .milkdown-toolbar .toolbar-item.active svg) {
+  color: var(--pc-action);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-toolbar .toolbar-item.active) {
+  background: color-mix(in srgb, var(--pc-action) 10%, var(--pc-surface));
+}
+
+.markdown-editor :deep(.milkdown .milkdown-toolbar .divider) {
+  width: 1px;
+  height: 16px;
+  margin: 6px 3px;
+  background: var(--pc-border-soft);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-link-preview > .link-preview),
+.markdown-editor :deep(.milkdown .milkdown-link-edit > .link-edit) {
+  min-height: 36px;
+  height: auto;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-link-preview .link-display) {
+  width: min(240px, 56vw);
+  padding: 0 6px;
+  color: var(--pc-text-secondary);
+  font-size: 12px;
+  line-height: 26px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-link-preview .link-icon),
+.markdown-editor :deep(.milkdown .milkdown-link-preview .button),
+.markdown-editor :deep(.milkdown .milkdown-link-edit .button) {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 4px;
+  padding: 5px;
+  line-height: 1;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-link-preview .link-icon:hover),
+.markdown-editor :deep(.milkdown .milkdown-link-preview .button:hover),
+.markdown-editor :deep(.milkdown .milkdown-link-edit .button:hover) {
+  background: var(--pc-surface-soft);
+  color: var(--pc-action);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-link-preview .link-icon svg),
+.markdown-editor :deep(.milkdown .milkdown-link-preview .button svg),
+.markdown-editor :deep(.milkdown .milkdown-link-edit .button svg) {
+  width: 17px;
+  height: 17px;
+  color: currentcolor;
+  fill: currentcolor;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-link-edit .input-area) {
+  width: min(240px, 56vw);
+  height: 28px;
+  border: 1px solid var(--pc-border);
+  border-radius: 4px;
+  padding: 0 8px;
+  background: var(--pc-surface);
+  color: var(--pc-text);
+  font-size: 12px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-link-edit .input-area:focus) {
+  border-color: var(--pc-action);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pc-action) 14%, transparent);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block) {
+  margin: 8px 0;
+  border: 1px solid var(--pc-border-soft);
+  border-radius: var(--pc-radius-sm);
+  padding: 8px 12px 12px;
+  background: var(--pc-surface-soft);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block.selected) {
+  outline: 0;
+  border-color: color-mix(in srgb, var(--pc-action) 55%, var(--pc-border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pc-action) 12%, transparent);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .cm-editor),
+.markdown-editor :deep(.milkdown .milkdown-code-block .cm-gutters) {
+  background: transparent;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .tools) {
+  min-height: 28px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .language-button),
+.markdown-editor :deep(.milkdown .milkdown-code-block .tools-button-group button) {
+  min-height: 28px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--pc-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 1;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .language-button) {
+  margin-bottom: 4px;
+  padding: 4px 4px 4px 7px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .language-button:hover),
+.markdown-editor :deep(.milkdown .milkdown-code-block .tools-button-group button:hover) {
+  background: var(--pc-surface);
+  color: var(--pc-action);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .tools-button-group) {
+  gap: 2px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .tools-button-group button) {
+  padding: 5px 7px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .tools-button-group button:first-child),
+.markdown-editor :deep(.milkdown .milkdown-code-block .tools-button-group button:last-child) {
+  border-radius: 4px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .tools-button-group button svg) {
+  fill: currentcolor;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .language-picker) {
+  max-width: calc(100vw - 36px);
+  padding-top: 4px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .list-wrapper) {
+  width: 220px;
+  max-width: calc(100vw - 36px);
+  padding: 5px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .search-box) {
+  min-height: 32px;
+  margin: 0 0 5px;
+  border: 1px solid var(--pc-border);
+  border-radius: 4px;
+  outline: 0;
+  padding: 5px 8px;
+  background: var(--pc-surface);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .search-box:has(input:focus)) {
+  border-color: var(--pc-action);
+  outline: 0;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--pc-action) 14%, transparent);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .search-box input) {
+  color: var(--pc-text);
+  font-size: 12px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .language-list) {
+  height: min(280px, 45vh);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .language-list-item) {
+  min-height: 30px;
+  border-radius: 4px;
+  padding: 5px 8px;
+  color: var(--pc-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-code-block .language-list-item:hover),
+.markdown-editor :deep(.milkdown .milkdown-code-block .language-list-item:focus-visible) {
+  background: var(--pc-surface-soft);
+  color: var(--pc-text);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-image-inline .empty-image-inline) {
+  min-height: 36px;
+  gap: 6px;
+  padding: 5px 7px;
+  font-size: 12px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-image-block) {
+  margin: 8px 0;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-image-block .image-edit) {
+  min-height: 44px;
+  height: auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--pc-border-soft);
+  border-radius: var(--pc-radius-sm);
+  padding: 7px 9px;
+  background: var(--pc-surface-soft);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-image-block .image-edit .confirm) {
+  min-height: 28px;
+  border-radius: 4px;
+  padding: 5px 9px;
+  background: var(--pc-action);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-image-block .image-wrapper .operation) {
+  top: 8px;
+  right: 8px;
+  gap: 4px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-image-block .image-wrapper .operation-item) {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--pc-border-soft);
+  border-radius: 4px;
+  padding: 5px;
+  background: var(--pc-surface);
+  color: var(--pc-text-secondary);
+  opacity: 1;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-image-block .image-wrapper .operation-item:hover) {
+  color: var(--pc-action);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-image-block .image-wrapper .operation-item svg) {
+  width: 17px;
+  height: 17px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-table-block th),
+.markdown-editor :deep(.milkdown .milkdown-table-block td) {
+  border-color: var(--pc-border);
+  padding: 7px 10px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-table-block th) {
+  background: var(--pc-surface-soft);
+  color: var(--pc-text);
+  font-weight: 600;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-table-block .cell-handle),
+.markdown-editor :deep(.milkdown .milkdown-table-block .line-handle .add-button),
+.markdown-editor :deep(.milkdown .milkdown-table-block .cell-handle .button-group) {
+  border: 1px solid var(--pc-border-soft);
+  background: var(--pc-surface);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 14%);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-table-block .cell-handle),
+.markdown-editor :deep(.milkdown .milkdown-table-block .line-handle .add-button) {
+  border-radius: 4px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-table-block .cell-handle .button-group) {
+  border-radius: var(--pc-radius-sm);
+}
+
+.markdown-editor :deep(.milkdown .milkdown-block-handle .operation-item) {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  padding: 5px;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-block-handle .operation-item svg) {
+  width: 18px;
+  height: 18px;
+  color: var(--pc-text-secondary);
+  fill: currentcolor;
+}
+
+.markdown-editor :deep(.milkdown .milkdown-block-handle .operation-item:hover) {
+  background: var(--pc-surface-soft);
 }
 
 .markdown-editor--monospace :deep(.milkdown .ProseMirror) {

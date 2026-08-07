@@ -35,6 +35,16 @@ function linkAttributes(url: string): string {
     : ''
 }
 
+export function normalizeEscapedMarkdownLinks(markdown: string): string {
+  return markdown.replace(
+    /\\\[((?:\\.|[^\]\n])+)\\?\]\\\(((?:\\.|[^)\n])+)\\?\)/g,
+    (_match, label: string, href: string) => {
+      const unescapePunctuation = (value: string) => value.replace(/\\([^\w\s])/g, '$1')
+      return `[${unescapePunctuation(label)}](${unescapePunctuation(href)})`
+    },
+  )
+}
+
 function renderInline(source: string, allowLinks = true): string {
   const tokens: string[] = []
   const stash = (html: string) => `${TOKEN_PREFIX}${tokens.push(html) - 1}${TOKEN_SUFFIX}`
@@ -99,7 +109,7 @@ function isBlockStart(lines: string[], index: number): boolean {
 }
 
 export function renderMarkdown(source: string): string {
-  const lines = source.replace(/\r\n?/g, '\n').split('\n')
+  const lines = normalizeEscapedMarkdownLinks(source).replace(/\r\n?/g, '\n').split('\n')
   const blocks: string[] = []
   let index = 0
 
@@ -206,7 +216,7 @@ export function renderMarkdown(source: string): string {
 }
 
 export function markdownToPlainText(source: string): string {
-  return source
+  return normalizeEscapedMarkdownLinks(source)
     .replace(/```[\w-]*\n([\s\S]*?)```/g, '$1')
     .replace(/<br\s*\/?>/gi, ' ')
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, (_, alt: string) => {
