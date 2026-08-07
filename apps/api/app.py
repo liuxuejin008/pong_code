@@ -57,6 +57,24 @@ def ensure_project_team_schema():
         db.session.commit()
 
 
+def ensure_feishu_bot_schema():
+    """兼容历史数据库：补齐项目级飞书机器人配置字段。"""
+    inspector = inspect(db.engine)
+    if 'project' not in inspector.get_table_names():
+        return
+
+    existing_columns = {column['name'] for column in inspector.get_columns('project')}
+    changed = False
+    for column_name in ('feishu_webhook_url', 'feishu_webhook_secret'):
+        if column_name not in existing_columns:
+            db.session.execute(text(
+                f'ALTER TABLE project ADD COLUMN {column_name} TEXT'
+            ))
+            changed = True
+    if changed:
+        db.session.commit()
+
+
 def ensure_item_code_schema():
     """兼容历史数据库：只补字段，不为历史任务或缺陷补编码。"""
     inspector = inspect(db.engine)
@@ -132,7 +150,8 @@ def create_app():
     app.config['MAIL_PASSWORD']       = os.getenv('MAIL_PASSWORD')
     app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'no-reply@pongcode.local')
     app.config['RESET_TOKEN_MAX_AGE'] = int(os.getenv('RESET_TOKEN_MAX_AGE', '3600'))
-    app.config['APP_BASE_URL']        = os.getenv('APP_BASE_URL', 'http://localhost:5000')
+    # 本地 pnpm dev 由 package.json 注入 5173；生产务必覆盖为对外可访问域名。
+    app.config['APP_BASE_URL']        = os.getenv('APP_BASE_URL', 'http://localhost:5173')
 
     # 外部开放接口（OAuth2 client_credentials）
     app.config['JWT_SECRET']    = os.getenv('JWT_SECRET', 'dev-jwt-secret-change-this')
@@ -206,6 +225,7 @@ def create_app():
         db.create_all()
         ensure_bug_evidence_schema()
         ensure_project_team_schema()
+        ensure_feishu_bot_schema()
         ensure_item_code_schema()
         ensure_bug_dict_schema()
 

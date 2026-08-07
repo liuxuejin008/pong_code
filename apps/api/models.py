@@ -6,6 +6,13 @@ from extensions import db, login_manager
 
 
 # Bug 字段字典（前后端共用）
+SEVERITY_LABELS = {
+    1: '致命',
+    2: '严重',
+    3: '一般',
+    4: '轻微',
+    5: '建议',
+}
 BUG_TYPE_LABELS = {
     'functional': '功能问题',
     'performance': '性能问题',
@@ -151,6 +158,8 @@ class Project(db.Model):
     description = db.Column(db.Text)
     organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'))
     team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=True)
+    feishu_webhook_url = db.Column(db.Text, nullable=True)
+    feishu_webhook_secret = db.Column(db.Text, nullable=True)
     
     sprints = db.relationship('Sprint', backref='project', lazy='dynamic')
     issues = db.relationship('Issue', backref='project', lazy='dynamic')
@@ -165,7 +174,8 @@ class Project(db.Model):
             'team_id': self.team_id,
             'team_name': self.team.name if self.team else None,
             'issues_count': self.issues.count(),
-            'sprints_count': self.sprints.count()
+            'sprints_count': self.sprints.count(),
+            'feishu_bot_configured': bool(self.feishu_webhook_url),
         }
 
     def __repr__(self):

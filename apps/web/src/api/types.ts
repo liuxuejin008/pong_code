@@ -45,6 +45,7 @@ export interface Project extends ContractProject {
   team_name: string | null
   issues_count: number
   sprints_count: number
+  feishu_bot_configured?: boolean
 }
 
 export interface Sprint extends ContractSprint {

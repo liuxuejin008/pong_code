@@ -5,7 +5,7 @@
   "packageManager": "pnpm@11.9.0",
   "scripts": {
     "dev": "concurrently -k -n API,WEB -c blue,magenta \"pnpm dev:api\" \"pnpm dev:web\"",
-    "dev:api": ".venv/bin/python apps/api/app.py",
+    "dev:api": "APP_BASE_URL=http://localhost:5173 .venv/bin/python apps/api/app.py",
     "dev:web": "pnpm --filter @pongcode/web dev",
     "build": "pnpm --filter @pongcode/api-contract build && pnpm --filter @pongcode/web build",
     "build:web": "pnpm --filter @pongcode/web build",
