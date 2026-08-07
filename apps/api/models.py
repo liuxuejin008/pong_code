@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import func
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
@@ -56,6 +56,18 @@ DISCOVERY_CHANNEL_LABELS = {
     'log': '日志',
     'sprint': '迭代发现',
 }
+
+
+def _utc_isoformat(value):
+    """将数据库中的 naive UTC 时间序列化为带 UTC 标记的 ISO 8601。"""
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    else:
+        value = value.astimezone(timezone.utc)
+    return value.isoformat().replace('+00:00', 'Z')
+
 
 # Association Table for Organization Members
 organization_members = db.Table('organization_members',
@@ -146,7 +158,7 @@ class Team(db.Model):
             'description': self.description,
             'organization_id': self.organization_id,
             'members_count': len(self.members),
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': _utc_isoformat(self.created_at)
         }
 
     def __repr__(self):
@@ -312,7 +324,7 @@ class SprintWorkLog(db.Model):
             'user_id': self.user_id,
             'user_name': self.user.username,
             'date': self.date.isoformat(),
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': _utc_isoformat(self.created_at),
             'hours': self.hours,
             'description': self.description
         }
@@ -335,7 +347,7 @@ class WorkLog(db.Model):
             'user_id': self.user_id,
             'user_name': self.user.username,
             'date': self.date.isoformat(),
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': _utc_isoformat(self.created_at),
             'hours': self.hours,
             'description': self.description
         }
@@ -368,8 +380,8 @@ class Requirement(db.Model):
             'priority': self.priority,
             'expected_delivery_date': self.expected_delivery_date.isoformat() if self.expected_delivery_date else None,
             'status': self.status,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'created_at': _utc_isoformat(self.created_at),
+            'updated_at': _utc_isoformat(self.updated_at),
             'project_id': self.project_id,
             'creator_id': self.creator_id,
             'creator_name': self.creator.username if self.creator else None,
@@ -399,7 +411,7 @@ class BugWorkLog(db.Model):
             'user_id': self.user_id,
             'user_name': self.user.username,
             'date': self.date.isoformat(),
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': _utc_isoformat(self.created_at),
             'hours': self.hours,
             'description': self.description
         }
@@ -421,7 +433,7 @@ class BugEvidenceAttachment(db.Model):
             'file_path': self.file_path,
             'mime_type': self.mime_type,
             'file_size': self.file_size,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': _utc_isoformat(self.created_at),
             'url': f'/static/{self.file_path.lstrip("/")}'
         }
 
@@ -450,7 +462,7 @@ class BugEvidence(db.Model):
             'creator_name': self.creator.username if self.creator else None,
             'comment': self.comment,
             'stack_trace': self.stack_trace,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': _utc_isoformat(self.created_at),
             'attachments': [attachment.to_dict() for attachment in self.attachments.order_by(BugEvidenceAttachment.id.asc()).all()]
         }
 
@@ -515,9 +527,9 @@ class Bug(db.Model):
             'evidence_count': self.evidence_count or 0,
             'time_estimate': self.time_estimate,
             'time_spent': round(sum(float(log.hours) for log in self.work_logs), 1),
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
+            'created_at': _utc_isoformat(self.created_at),
+            'updated_at': _utc_isoformat(self.updated_at),
+            'resolved_at': _utc_isoformat(self.resolved_at),
             'project_id': self.project_id,
             'reporter_id': self.reporter_id,
             'reporter_name': self.reporter.username if self.reporter else None,

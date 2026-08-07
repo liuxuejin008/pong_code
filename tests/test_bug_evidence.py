@@ -113,8 +113,10 @@ class BugEvidenceApiTestCase(unittest.TestCase):
         self.assertEqual(evidence_response.status_code, 201)
 
         payload = evidence_response.get_json()
+        self.assertTrue(payload['evidence']['created_at'].endswith('Z'))
         attachments = payload['evidence']['attachments']
         self.assertEqual(len(attachments), 1)
+        self.assertTrue(attachments[0]['created_at'].endswith('Z'))
         self.assertEqual(attachments[0]['file_name'], 'preview.png')
         self.assertTrue(attachments[0]['url'].endswith('.png'))
         self.assertTrue(attachments[0]['url'].startswith('/static/uploads/'))
