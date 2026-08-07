@@ -7,6 +7,15 @@ export const bugStatusLabels = {
   rejected: '已拒绝',
 } as const
 
+/** 缺陷状态快速修改选项（5 态，与 bug-detail-dialog 一致，不含 resolved 历史别名） */
+export const bugStatusOptions = [
+  { label: '待处理', value: 'open' },
+  { label: '处理中', value: 'in_progress' },
+  { label: '已修复', value: 'fixed' },
+  { label: '已验证', value: 'closed' },
+  { label: '已拒绝', value: 'rejected' },
+] as const
+
 /** 与后端 models.py 中 BUG_*_LABELS 保持一致 */
 export const bugTypeLabels = {
   functional: '功能问题',

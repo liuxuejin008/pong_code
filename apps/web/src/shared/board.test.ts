@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { BoardItem, Swimlane } from '@/api/types'
 import {
-  boardBugStatus,
+  boardBugDefaultStatus,
   boardCollapsedStorageKey,
+  bugStatusBucket,
   boardItemKey,
   boardLaneId,
   boardRequirementId,
@@ -49,8 +50,13 @@ describe('看板共享规则', () => {
     expect(boardRequirementId('unassigned')).toBeNull()
   })
 
-  it('使用既有缺陷状态映射', () => {
-    expect(boardBugStatus).toEqual({
+  it('缺陷 5 态归入 3 个看板列（桶）', () => {
+    expect(bugStatusBucket('open')).toBe('todo')
+    expect(bugStatusBucket('in_progress')).toBe('doing')
+    expect(bugStatusBucket('fixed')).toBe('doing')
+    expect(bugStatusBucket('closed')).toBe('done')
+    expect(bugStatusBucket('rejected')).toBe('done')
+    expect(boardBugDefaultStatus).toEqual({
       todo: 'open',
       doing: 'in_progress',
       done: 'closed',

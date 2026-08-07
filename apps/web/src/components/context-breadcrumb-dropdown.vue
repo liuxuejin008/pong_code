@@ -113,6 +113,7 @@ const groupedOptions = computed(() => {
 })
 const hasGroups = computed(() => groupedOptions.value.some(group => group.label))
 const statusColors: Record<StatusType, string> = {
+  primary: 'var(--el-color-primary)',
   success: 'var(--el-color-success)',
   warning: 'var(--el-color-warning)',
   danger: 'var(--el-color-danger)',

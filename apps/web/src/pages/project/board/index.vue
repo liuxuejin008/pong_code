@@ -22,7 +22,7 @@ import { getRequirements } from '@/api/requirements'
 import { updateSprint } from '@/api/sprints'
 import { getUsers } from '@/api/users'
 import { apiErrorMessage } from '@/api/client'
-import type { BoardItem, BoardResponse, Requirement, Sprint, Swimlane, User } from '@/api/types'
+import type { BoardItem, BoardResponse, Bug, Requirement, Sprint, Swimlane, User } from '@/api/types'
 import EmptyState from '@/components/empty-state.vue'
 import LoadingSkeleton from '@/components/loading-skeleton.vue'
 import StatusTag from '@/components/status-tag.vue'
@@ -35,8 +35,9 @@ import BoardRequirementBindDialog from '@/components/business/board/board-requir
 import SortableBoardColumn from '@/components/business/board/sortable-board-column.vue'
 import {
   BOARD_HIDE_COMPLETED_STORAGE_KEY,
-  boardBugStatus,
+  boardBugDefaultStatus,
   boardCollapsedStorageKey,
+  bugStatusBucket,
   boardLaneId,
   calculateBoardTotals,
   calculateSwimlaneProgress,
@@ -334,6 +335,8 @@ async function moveItem(payload: {
   requirementId: number | null
   sourceStatus: BoardStatus
   sourceLaneId: string
+  /** 缺陷通过 5 态下拉修改时携带的精确状态 */
+  bugStatus?: Bug['status']
   oldIndex?: number
   newIndex?: number
 }) {
@@ -345,6 +348,7 @@ async function moveItem(payload: {
     (lane.requirement?.id || null) === payload.requirementId
   ))
   let moving: BoardItem | undefined
+  let sourceIndex = 0
   for (const lane of lanes) {
     for (const status of statusColumns.map(column => column.value)) {
       const index = lane[status].findIndex(item => (
@@ -352,6 +356,7 @@ async function moveItem(payload: {
       ))
       if (index >= 0) {
         moving = lane[status].splice(index, 1)[0]
+        sourceIndex = index
         break
       }
     }
@@ -368,14 +373,18 @@ async function moveItem(payload: {
   moving.requirement_title = targetLane.requirement?.title || null
   if (moving.item_type === 'bug') {
     moving.board_status = payload.status
-    moving.status = boardBugStatus[payload.status]
+    // 5 态下拉直接携带精确状态；拖拽/列移动则保持同桶状态，跨桶用该列默认状态
+    moving.status = payload.bugStatus
+      ?? (bugStatusBucket(moving.status) === payload.status ? moving.status : boardBugDefaultStatus[payload.status])
   }
   else {
     moving.status = payload.status
   }
   const targetItems = targetLane[payload.status]
+  // 同栏同泳道切换状态（如处理中↔已修复）保持原位置；跨栏/跨泳道落到目标列末尾
+  const sameLane = payload.sourceLaneId === laneId(targetLane) && payload.sourceStatus === payload.status
   const targetIndex = payload.newIndex == null
-    ? targetItems.length
+    ? (sameLane ? sourceIndex : targetItems.length)
     : Math.min(payload.newIndex, targetItems.length)
   targetItems.splice(targetIndex, 0, moving)
 
@@ -387,7 +396,7 @@ async function moveItem(payload: {
   try {
     if (payload.itemType === 'bug') {
       await updateBug(payload.itemId, {
-        status: boardBugStatus[payload.status],
+        status: moving.status,
         requirement_id: payload.requirementId,
       })
     }
