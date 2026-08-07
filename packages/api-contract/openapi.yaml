@@ -174,6 +174,47 @@ paths:
     delete:
       operationId: deleteProject
       responses: *json-response
+  /api/projects/{projectId}/feishu-bot:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      operationId: getProjectFeishuBot
+      responses:
+        "200":
+          description: 飞书机器人脱敏状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeishuBotStatus"
+    put:
+      operationId: updateProjectFeishuBot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                webhook_url:
+                  type: string
+                secret:
+                  type: string
+      responses:
+        "200":
+          description: 飞书机器人脱敏状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeishuBotStatus"
+    delete:
+      operationId: deleteProjectFeishuBot
+      responses: *json-response
+  /api/projects/{projectId}/feishu-bot/test:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    post:
+      operationId: testProjectFeishuBot
+      responses: *json-response
   /api/projects/{projectId}/sprints:
     parameters:
       - $ref: "#/components/parameters/ProjectId"
@@ -716,6 +757,22 @@ components:
           type:
             - string
             - "null"
+        feishu_bot_configured:
+          type: boolean
+    FeishuBotStatus:
+      type: object
+      required:
+        - enabled
+        - secret_configured
+      properties:
+        enabled:
+          type: boolean
+        webhook_masked:
+          type:
+            - string
+            - "null"
+        secret_configured:
+          type: boolean
     Sprint:
       type: object
       required:

@@ -24,6 +24,7 @@ from models import (
 )
 from routes.input_utils import parse_nullable_int, parse_int, parse_float, parse_date
 from routes.item_codes import allocate_item_code
+from services.feishu_bot import FeishuBotError, send_bug_notification
 
 bp = Blueprint('bugs', __name__, url_prefix='/api')
 
@@ -308,6 +309,20 @@ def create_bug(project_id):
     )
     db.session.add(bug)
     db.session.commit()
+    try:
+        send_bug_notification(project, bug)
+    except FeishuBotError:
+        current_app.logger.warning(
+            '飞书缺陷通知发送失败 project_id=%s bug_id=%s',
+            project.id,
+            bug.id,
+        )
+    except Exception:
+        current_app.logger.error(
+            '飞书缺陷通知发生意外错误 project_id=%s bug_id=%s',
+            project.id,
+            bug.id,
+        )
     return jsonify(bug.to_dict()), 201
 
 

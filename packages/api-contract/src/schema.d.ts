@@ -326,6 +326,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{projectId}/feishu-bot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getProjectFeishuBot"];
+        put: operations["updateProjectFeishuBot"];
+        post?: never;
+        delete: operations["deleteProjectFeishuBot"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{projectId}/feishu-bot/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["testProjectFeishuBot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{projectId}/sprints": {
         parameters: {
             query?: never;
@@ -811,6 +847,12 @@ export interface components {
             organization_id: number;
             team_id?: number | null;
             team_name?: string | null;
+            feishu_bot_configured?: boolean;
+        };
+        FeishuBotStatus: {
+            enabled: boolean;
+            webhook_masked?: string | null;
+            secret_configured: boolean;
         };
         Sprint: {
             id: number;
@@ -1519,6 +1561,105 @@ export interface operations {
         };
     };
     deleteProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 请求成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    getProjectFeishuBot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 飞书机器人脱敏状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeishuBotStatus"];
+                };
+            };
+        };
+    };
+    updateProjectFeishuBot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    webhook_url?: string;
+                    secret?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 飞书机器人脱敏状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeishuBotStatus"];
+                };
+            };
+        };
+    };
+    deleteProjectFeishuBot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 请求成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    testProjectFeishuBot: {
         parameters: {
             query?: never;
             header?: never;
