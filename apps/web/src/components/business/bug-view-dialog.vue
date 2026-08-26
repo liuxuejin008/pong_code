@@ -18,6 +18,7 @@ import {
   bugTypeLabels,
 } from '@/shared/bug'
 import { evidenceImageIndex, evidenceImageUrls, isImageAttachment } from '@/shared/attachment'
+import { formatDateTime } from '@/shared/date-time'
 import WorklogList from './worklog-list.vue'
 
 const props = defineProps<{
@@ -76,12 +77,6 @@ async function load() {
   finally {
     loading.value = false
   }
-}
-
-function formatDateTime(value: string | null | undefined) {
-  if (!value)
-    return '-'
-  return new Date(value).toLocaleString('zh-CN')
 }
 
 function openEdit(tab: 'detail' | 'evidence' | 'time' = 'detail') {

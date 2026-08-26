@@ -10,21 +10,29 @@ const PassThroughStub = defineComponent({
   },
 })
 
-const InputStub = defineComponent({
+const MarkdownEditorStub = defineComponent({
   inheritAttrs: false,
   props: {
-    type: String,
     modelValue: String,
+    placeholder: String,
+    minHeight: Number,
+    maxLength: Number,
   },
+  emits: ['update:modelValue'],
   setup(props, { attrs }) {
-    return () => props.type === 'textarea'
-      ? h('textarea', { ...attrs, value: props.modelValue })
-      : h('input', { ...attrs, value: props.modelValue })
+    return () => h('textarea', {
+      ...attrs,
+      'class': 'markdown-editor',
+      'value': props.modelValue,
+      'data-placeholder': props.placeholder,
+      'data-min-height': props.minHeight,
+      'data-max-length': props.maxLength,
+    })
   },
 })
 
 describe('WorklogForm', () => {
-  it('工时说明保持普通文本输入，不启用 Markdown 编辑器', () => {
+  it('工时说明使用 Markdown 编辑器', () => {
     const wrapper = mount(WorklogForm, {
       global: {
         stubs: {
@@ -32,17 +40,17 @@ describe('WorklogForm', () => {
           ElDatePicker: true,
           ElForm: PassThroughStub,
           ElFormItem: PassThroughStub,
-          ElInput: InputStub,
           ElInputNumber: true,
+          MarkdownEditor: MarkdownEditorStub,
         },
       },
     })
 
-    const description = wrapper.get('textarea')
+    const description = wrapper.get('.markdown-editor')
     expect(description.attributes()).toMatchObject({
-      maxlength: '2000',
-      placeholder: '输入说明（可选）',
+      'data-max-length': '2000',
+      'data-min-height': '120',
+      'data-placeholder': '输入说明（可选）；支持 Markdown，可直接粘贴图片',
     })
-    expect(wrapper.find('.markdown-editor').exists()).toBe(false)
   })
 })

@@ -56,7 +56,7 @@ describe('WorklogList', () => {
     expect(secondAvatar.attributes('style')).toBe(firstAvatar.attributes('style'))
   })
 
-  it('有说明时独立成块展示，无说明时只显示日期', () => {
+  it('有说明时按 Markdown 独立成块展示，无说明时只显示日期', () => {
     const wrapper = mount(WorklogList, {
       props: {
         logs: [
@@ -77,7 +77,7 @@ describe('WorklogList', () => {
             date: '2026-06-29',
             created_at: null,
             hours: 0.25,
-            description: '这是一段很长的工时说明，需要独立展示',
+            description: '## 排查结果\n\n**接口超时**，已恢复。',
             can_delete: false,
           },
         ],
@@ -100,8 +100,10 @@ describe('WorklogList', () => {
     expect(firstArticle.find('[data-testid="worklog-description"]').exists()).toBe(false)
 
     const description = secondArticle.get('[data-testid="worklog-description"]')
-    expect(description.text()).toBe('这是一段很长的工时说明，需要独立展示')
+    expect(description.get('h2').text()).toBe('排查结果')
+    expect(description.get('strong').text()).toBe('接口超时')
     expect(description.classes()).toContain('ml-12')
+    expect(description.classes()).toContain('markdown-renderer--compact')
   })
 })
 

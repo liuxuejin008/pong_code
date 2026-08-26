@@ -30,6 +30,7 @@ import {
   type BugPriority,
   type BugType,
 } from '@/shared/bug'
+import { formatDateTime } from '@/shared/date-time'
 import { evidenceImageIndex, evidenceImageUrls, isImageAttachment } from '@/shared/attachment'
 import WorklogForm from './worklog-form.vue'
 import WorklogList from './worklog-list.vue'
@@ -355,7 +356,7 @@ async function removeWorklog(log: WorkLog) {
               <article v-for="evidence in evidences" :key="evidence.id" class="border-b border-[var(--pc-border-soft)] py-4">
                 <header class="flex items-center justify-between gap-3">
                   <strong class="text-sm text-[var(--pc-text)]">{{ evidence.creator_name || '未知用户' }}</strong>
-                  <time class="text-xs text-[var(--pc-text-muted)]">{{ evidence.created_at?.replace('T', ' ').slice(0, 16) }}</time>
+                  <time class="text-xs text-[var(--pc-text-muted)]">{{ formatDateTime(evidence.created_at, { includeSeconds: false }) }}</time>
                 </header>
                 <MarkdownRenderer
                   v-if="evidence.comment"

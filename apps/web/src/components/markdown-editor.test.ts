@@ -31,6 +31,7 @@ vi.mock('@milkdown/crepe', () => {
     config: any
     markdown: string
     markdownUpdated?: (ctx: unknown, markdown: string) => void
+    actionContext?: { get: (key: unknown) => unknown }
     editor: { action: ReturnType<typeof vi.fn> }
     destroy = vi.fn(async () => this.editor)
 
@@ -38,7 +39,9 @@ vi.mock('@milkdown/crepe', () => {
       this.config = config
       this.markdown = config.defaultValue
       this.editor = {
-        action: vi.fn((action: { type?: string, markdown?: string }) => {
+        action: vi.fn((action: any) => {
+          if (typeof action === 'function' && this.actionContext)
+            action(this.actionContext)
           if (action.type === 'replace-all' && typeof action.markdown === 'string') {
             this.markdown = action.markdown
             this.markdownUpdated?.({}, action.markdown)
@@ -139,6 +142,14 @@ describe('MarkdownEditor', () => {
       .toContain('markdown-command-advanced-icon')
     expect(instance.config.featureConfigs['block-edit'].textGroup.h1.icon)
       .toContain('>H1</text>')
+    expect(instance.config.featureConfigs['code-mirror']).toMatchObject({
+      copyText: '复制',
+      noResultText: '未找到语言',
+      searchPlaceholder: '搜索语言',
+    })
+    expect(instance.config.featureConfigs['link-tooltip']).toEqual({
+      inputPlaceholder: '粘贴链接地址',
+    })
 
     const imageInput = wrapper.get<HTMLInputElement>('[data-testid="markdown-image-input"]')
     expect(imageInput.attributes('accept')).toBe('image/png,image/jpeg,image/gif,image/webp')
@@ -180,6 +191,118 @@ describe('MarkdownEditor', () => {
     await flushPromises()
 
     expect(wrapper.props('modelValue')).toBe('## 修复结果\n\n**已完成**')
+  })
+
+  it('waits until Enter before restoring escaped link syntax', async () => {
+    const wrapper = mount(MarkdownEditor, {
+      props: {
+        modelValue: '',
+        testId: 'markdown-input',
+        'onUpdate:modelValue': value => wrapper.setProps({ modelValue: value }),
+      },
+    })
+    await flushPromises()
+
+    const escapedLink = '\\[pica]\\(https\\://example.com/docs/part_\\(draft\\))'
+    milkdownMock.instances[0].emitMarkdown(escapedLink)
+    await flushPromises()
+
+    expect(wrapper.props('modelValue')).toBe(escapedLink)
+
+    const rawLink = '[pica](https://example.com/docs/part_(draft))'
+    const link = { type: 'link' }
+    const linkMark = {
+      create: vi.fn(() => link),
+    }
+    const schemaText = vi.fn((text, marks) => ({ marks, text }))
+    const transaction = {
+      replaceWith: vi.fn(),
+      scrollIntoView: vi.fn(),
+    }
+    transaction.replaceWith.mockReturnValue(transaction)
+    transaction.scrollIntoView.mockReturnValue(transaction)
+    const instance = milkdownMock.instances[0]
+    const view = {
+      dispatch: vi.fn(() => instance.emitMarkdown(rawLink)),
+      state: {
+        doc: {
+          descendants: vi.fn(callback => callback({
+            isTextblock: true,
+            textContent: rawLink,
+          }, 0)),
+        },
+        schema: {
+          marks: { link: linkMark },
+          text: schemaText,
+        },
+        tr: transaction,
+      },
+    }
+    instance.actionContext = { get: () => view }
+
+    await wrapper.get('[data-testid="markdown-input"]').trigger('keydown', {
+      key: 'Enter',
+    })
+    await flushPromises()
+
+    expect(wrapper.props('modelValue')).toBe(
+      rawLink,
+    )
+    expect(linkMark.create).toHaveBeenCalledWith({
+      href: 'https://example.com/docs/part_(draft)',
+    })
+    expect(schemaText).toHaveBeenCalledWith('pica', [link])
+    expect(transaction.replaceWith).toHaveBeenCalledWith(1, rawLink.length + 1, {
+      marks: [link],
+      text: 'pica',
+    })
+  })
+
+  it('inserts a closing parenthesis without running the eager link input rule', async () => {
+    const wrapper = mount(MarkdownEditor, {
+      props: {
+        modelValue: '',
+        testId: 'markdown-input',
+      },
+    })
+    await flushPromises()
+
+    const text = '[pica](https://example.com/docs/part_(draft'
+    const transaction = {
+      insertText: vi.fn(),
+      scrollIntoView: vi.fn(),
+    }
+    transaction.insertText.mockReturnValue(transaction)
+    transaction.scrollIntoView.mockReturnValue(transaction)
+    const view = {
+      dispatch: vi.fn(),
+      state: {
+        selection: {
+          empty: true,
+          $from: {
+            parent: {
+              content: { size: text.length },
+              textContent: text,
+              type: { name: 'paragraph' },
+            },
+            parentOffset: text.length,
+          },
+        },
+        tr: transaction,
+      },
+    }
+    milkdownMock.instances[0].actionContext = { get: () => view }
+
+    const event = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: ')',
+    })
+    wrapper.get('[data-testid="markdown-input"]').element.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(transaction.insertText).toHaveBeenCalledWith(')')
+    expect(view.dispatch).toHaveBeenCalledWith(transaction)
   })
 
   it('synchronizes externally replaced Markdown back into Milkdown', async () => {

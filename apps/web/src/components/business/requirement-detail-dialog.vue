@@ -8,6 +8,7 @@ import type { Requirement, Sprint } from '@/api/types'
 import AppDialog from '@/components/app-dialog.vue'
 import MarkdownEditor from '@/components/markdown-editor.vue'
 import StatusTag from '@/components/status-tag.vue'
+import { formatDateTime } from '@/shared/date-time'
 
 const props = defineProps<{
   modelValue: boolean
@@ -161,7 +162,7 @@ async function remove() {
       </div>
       <div class="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-xs text-[var(--pc-text-muted)]">
         <span>创建人：{{ requirement?.creator_name || '-' }}</span>
-        <span>创建时间：{{ requirement?.created_at?.replace('T', ' ').slice(0, 16) || '-' }}</span>
+        <span>创建时间：{{ formatDateTime(requirement?.created_at, { includeSeconds: false }) }}</span>
       </div>
     </el-form>
     <template #footer>
