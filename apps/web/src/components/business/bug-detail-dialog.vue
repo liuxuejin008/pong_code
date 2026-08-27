@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Delete, Picture } from '@element-plus/icons-vue'
+import { Delete, Document, Picture } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reactive, ref, watch } from 'vue'
 import {
@@ -31,6 +31,7 @@ import {
   type BugType,
 } from '@/shared/bug'
 import { formatDateTime } from '@/shared/date-time'
+import { evidenceImageIndex, evidenceImageUrls, isImageAttachment } from '@/shared/attachment'
 import WorklogForm from './worklog-form.vue'
 import WorklogList from './worklog-list.vue'
 
@@ -370,17 +371,39 @@ async function removeWorklog(log: WorkLog) {
                   class="mt-3 text-xs text-[var(--pc-text-secondary)]"
                 />
                 <div v-if="evidence.attachments.length" class="mt-3 grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2">
-                  <a
+                  <div
                     v-for="attachment in evidence.attachments"
                     :key="attachment.id"
-                    class="grid gap-1.5 text-xs text-[var(--pc-text-secondary)] no-underline"
-                    :href="attachment.url"
-                    target="_blank"
-                    rel="noreferrer"
+                    class="grid gap-1.5 text-xs text-[var(--pc-text-secondary)]"
                   >
-                    <img class="aspect-square w-full rounded-[var(--pc-radius-sm)] object-cover" :src="attachment.url" :alt="attachment.file_name">
-                    <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ attachment.file_name }}</span>
-                  </a>
+                    <el-image
+                      v-if="isImageAttachment(attachment)"
+                      class="block aspect-square w-full overflow-hidden rounded-[var(--pc-radius-sm)]"
+                      :src="attachment.url"
+                      :alt="attachment.file_name"
+                      fit="cover"
+                      :preview-src-list="evidenceImageUrls(evidence.attachments)"
+                      :initial-index="evidenceImageIndex(evidence.attachments, attachment)"
+                      preview-teleported
+                      hide-on-click-modal
+                    />
+                    <a
+                      v-else
+                      class="grid aspect-square w-full place-items-center rounded-[var(--pc-radius-sm)] bg-[var(--pc-surface-soft)] no-underline"
+                      :href="attachment.url"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <el-icon :size="24" class="text-[var(--pc-text-muted)]"><Document /></el-icon>
+                    </a>
+                    <a
+                      class="overflow-hidden text-ellipsis whitespace-nowrap no-underline hover:text-[var(--pc-action)]"
+                      :href="attachment.url"
+                      target="_blank"
+                      rel="noreferrer"
+                      :title="attachment.file_name"
+                    >{{ attachment.file_name }}</a>
+                  </div>
                 </div>
               </article>
               <el-empty v-if="!evidences.length" :image-size="64" description="还没有缺陷证据">

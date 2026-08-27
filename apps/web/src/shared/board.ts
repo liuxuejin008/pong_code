@@ -1,12 +1,21 @@
-import type { BoardItem, Swimlane } from '@/api/types'
+import type { BoardItem, Bug, Swimlane } from '@/api/types'
 
 export type BoardStatus = 'todo' | 'doing' | 'done'
-export type BoardBugStatus = 'open' | 'in_progress' | 'closed'
 
 export const BOARD_HIDE_COMPLETED_STORAGE_KEY = 'pongcode:board:hide-completed'
 export const BOARD_COLLAPSED_SWIMLANES_STORAGE_PREFIX = 'pongcode:board:collapsed-swimlanes:v1'
 
-export const boardBugStatus: Record<BoardStatus, BoardBugStatus> = {
+/** 缺陷状态 → 看板列（桶）：待处理→左；处理中/已修复→中；已拒绝/已验证→右 */
+export function bugStatusBucket(status: string): BoardStatus {
+  if (status === 'in_progress' || status === 'fixed')
+    return 'doing'
+  if (status === 'rejected' || status === 'closed')
+    return 'done'
+  return 'todo'
+}
+
+/** 拖拽/菜单落到某列时缺陷的默认状态（列内排序、同桶移动时保留原状态） */
+export const boardBugDefaultStatus: Record<BoardStatus, Bug['status']> = {
   todo: 'open',
   doing: 'in_progress',
   done: 'closed',

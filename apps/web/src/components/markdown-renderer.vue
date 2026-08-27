@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { renderMarkdown } from '@/shared/markdown'
 
 const props = withDefaults(defineProps<{
@@ -17,10 +17,30 @@ const props = withDefaults(defineProps<{
 })
 
 const html = computed(() => renderMarkdown(props.source?.trim() || props.emptyText))
+
+const root = ref<HTMLElement | null>(null)
+const viewerVisible = ref(false)
+const viewerUrls = ref<string[]>([])
+const viewerIndex = ref(0)
+
+/** 点击 Markdown 内的图片：收集本段所有图片，打开内置大图预览（支持 Esc 退出、左右切换） */
+function handleImageClick(event: MouseEvent) {
+  const target = event.target as HTMLElement | null
+  if (target?.tagName !== 'IMG')
+    return
+  const imgs = Array.from(root.value?.querySelectorAll('img') || []) as HTMLImageElement[]
+  const srcs = imgs.map(img => img.currentSrc || img.getAttribute('src') || '').filter(Boolean)
+  if (!srcs.length)
+    return
+  viewerUrls.value = srcs
+  viewerIndex.value = Math.max(0, imgs.indexOf(target as HTMLImageElement))
+  viewerVisible.value = true
+}
 </script>
 
 <template>
   <div
+    ref="root"
     class="markdown-renderer"
     :class="{
       'markdown-renderer--inline': inline,
@@ -28,6 +48,15 @@ const html = computed(() => renderMarkdown(props.source?.trim() || props.emptyTe
       'markdown-renderer--document': document,
     }"
     v-html="html"
+    @click="handleImageClick"
+  />
+  <el-image-viewer
+    v-if="viewerVisible"
+    :url-list="viewerUrls"
+    :initial-index="viewerIndex"
+    teleported
+    hide-on-click-modal
+    @close="viewerVisible = false"
   />
 </template>
 
@@ -36,6 +65,11 @@ const html = computed(() => renderMarkdown(props.source?.trim() || props.emptyTe
   min-width: 0;
   color: inherit;
   overflow-wrap: anywhere;
+}
+
+.markdown-renderer img {
+  max-width: 100%;
+  cursor: zoom-in;
 }
 
 .markdown-renderer > :first-child {

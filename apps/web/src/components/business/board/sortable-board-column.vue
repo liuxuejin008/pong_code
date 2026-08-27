@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { Box, Document, Edit, MoreFilled, WarningFilled } from '@element-plus/icons-vue'
+import { ArrowDown, Box, Document, Edit, MoreFilled, WarningFilled } from '@element-plus/icons-vue'
 import Sortable, { type SortableEvent } from 'sortablejs'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import type { BoardItem } from '@/api/types'
+import type { BoardItem, Bug } from '@/api/types'
 import { getUserAvatarStyle } from '@/shared/avatar-color'
-import { bugStatusLabels } from '@/shared/bug'
+import { bugStatusLabels, bugStatusOptions } from '@/shared/bug'
+import { bugStatusBucket } from '@/shared/board'
+import { statusColor } from '@/shared/status'
 import BoardTimeDropdown from './board-time-dropdown.vue'
 
 type BoardStatus = 'todo' | 'doing' | 'done'
@@ -33,6 +35,8 @@ const emit = defineEmits<{
     requirementId: number | null
     sourceStatus: BoardStatus
     sourceLaneId: string
+    /** 缺陷通过 5 态下拉修改时携带的精确状态；拖拽/菜单移动时省略 */
+    bugStatus?: Bug['status']
     oldIndex?: number
     newIndex?: number
   }]
@@ -62,7 +66,27 @@ function bugStatusLabel(item: BoardItem) {
   return bugStatusLabels[item.status] || '待处理'
 }
 
-function emitMove(item: BoardItem, status: BoardStatus, laneId = props.laneId) {
+/** 缺陷状态颜色：与 shared/status 的状态色一致（待处理灰、处理中蓝、已修复橙、已验证绿、已拒绝红） */
+function bugStatusColor(item: BoardItem) {
+  return statusColor(item.status)
+}
+
+function bugStatusPillStyle(item: BoardItem) {
+  const color = bugStatusColor(item)
+  return {
+    color,
+    backgroundColor: `color-mix(in srgb, ${color} 10%, var(--pc-surface))`,
+  }
+}
+
+/** 点击状态 pill 快速改状态（5 态）：按状态归入对应列，携带精确状态 */
+function handleBugStatusCommand(item: BoardItem, status: string) {
+  if (item.item_type !== 'bug' || status === item.status)
+    return
+  emitMove(item, bugStatusBucket(status), props.laneId, status as Bug['status'])
+}
+
+function emitMove(item: BoardItem, status: BoardStatus, laneId = props.laneId, bugStatus?: Bug['status']) {
   emit('move', {
     itemId: item.id,
     itemType: item.item_type,
@@ -70,6 +94,7 @@ function emitMove(item: BoardItem, status: BoardStatus, laneId = props.laneId) {
     requirementId: requirementIdFromLane(laneId),
     sourceStatus: props.status,
     sourceLaneId: props.laneId,
+    bugStatus,
   })
 }
 
@@ -100,6 +125,8 @@ function handleMoveCommand(item: BoardItem, command: unknown) {
   const [kind, value] = command.split(':', 2)
   if (kind === 'status')
     emitMove(item, value as BoardStatus)
+  else if (kind === 'bugstatus' && value)
+    emitMove(item, bugStatusBucket(value), props.laneId, value as Bug['status'])
   else if (kind === 'lane')
     emitMove(item, props.status, value)
 }
@@ -222,9 +249,19 @@ const statusOptions: Array<{ label: string; value: BoardStatus }> = [
                 <el-dropdown-item disabled>
                   移动到状态
                 </el-dropdown-item>
-                <el-dropdown-item v-for="option in statusOptions" :key="option.value" :command="`status:${option.value}`" :disabled="option.value === status">
-                  {{ option.label }}
-                </el-dropdown-item>
+                <template v-if="item.item_type === 'bug'">
+                  <el-dropdown-item v-for="opt in bugStatusOptions" :key="opt.value" :command="`bugstatus:${opt.value}`" :disabled="opt.value === item.status">
+                    <span class="inline-flex items-center gap-1.5">
+                      <span class="h-1.5 w-1.5 shrink-0 rounded-full" :style="{ backgroundColor: statusColor(opt.value) }" />
+                      {{ opt.label }}
+                    </span>
+                  </el-dropdown-item>
+                </template>
+                <template v-else>
+                  <el-dropdown-item v-for="option in statusOptions" :key="option.value" :command="`status:${option.value}`" :disabled="option.value === status">
+                    {{ option.label }}
+                  </el-dropdown-item>
+                </template>
                 <el-dropdown-item disabled divided>
                   移动到需求
                 </el-dropdown-item>
@@ -260,14 +297,37 @@ const statusOptions: Array<{ label: string; value: BoardStatus }> = [
         </span>
         <span class="mx-0.5 h-3.5 w-px shrink-0 bg-[var(--pc-border)]" aria-hidden="true" />
         <BoardTimeDropdown :item="item" @changed="emit('changed')" />
-        <span
+        <el-dropdown
           v-if="item.item_type === 'bug'"
-          class="ml-auto inline-flex shrink-0 items-center rounded-full bg-[color-mix(in_srgb,var(--pc-danger)_10%,var(--pc-surface))] px-2 py-0.5 text-[12px] font-medium text-[var(--pc-danger)]"
-          :aria-label="`缺陷状态：${bugStatusLabel(item)}`"
-          :title="`缺陷状态：${bugStatusLabel(item)}`"
+          trigger="click"
+          :persistent="false"
+          @command="(column: string) => handleBugStatusCommand(item, column)"
         >
-          {{ bugStatusLabel(item) }}
-        </span>
+          <span
+            class="ml-auto inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-medium"
+            :style="bugStatusPillStyle(item)"
+            :aria-label="`缺陷状态：${bugStatusLabel(item)}`"
+            :title="`点击修改缺陷状态（当前：${bugStatusLabel(item)}）`"
+          >
+            {{ bugStatusLabel(item) }}
+            <el-icon :size="11" class="opacity-70"><ArrowDown /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item
+                v-for="opt in bugStatusOptions"
+                :key="opt.value"
+                :command="opt.value"
+                :disabled="opt.value === item.status"
+              >
+                <span class="inline-flex items-center gap-1.5">
+                  <span class="h-1.5 w-1.5 shrink-0 rounded-full" :style="{ backgroundColor: statusColor(opt.value) }" />
+                  {{ opt.label }}
+                </span>
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </footer>
     </article>
 

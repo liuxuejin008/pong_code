@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Camera, Clock, Edit, Picture } from '@element-plus/icons-vue'
+import { Camera, Clock, Document, Edit, Picture } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, ref, watch } from 'vue'
 import { getBug } from '@/api/bugs'
@@ -17,6 +17,7 @@ import {
   bugStatusLabels,
   bugTypeLabels,
 } from '@/shared/bug'
+import { evidenceImageIndex, evidenceImageUrls, isImageAttachment } from '@/shared/attachment'
 import { formatDateTime } from '@/shared/date-time'
 import WorklogList from './worklog-list.vue'
 
@@ -263,17 +264,39 @@ function openEdit(tab: 'detail' | 'evidence' | 'time' = 'detail') {
               class="mb-2 text-[var(--pc-text-secondary)]"
             />
             <div v-if="evidence.attachments.length" class="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2">
-              <a
+              <div
                 v-for="attachment in evidence.attachments"
                 :key="attachment.id"
-                class="grid gap-1 text-xs text-[var(--pc-text-muted)] no-underline"
-                :href="attachment.url"
-                target="_blank"
-                rel="noreferrer"
+                class="grid gap-1 text-xs text-[var(--pc-text-muted)]"
               >
-                <img class="aspect-square w-full rounded-[var(--pc-radius-sm)] object-cover" :src="attachment.url" :alt="attachment.file_name">
-                <span class="overflow-hidden text-ellipsis whitespace-nowrap">{{ attachment.file_name }}</span>
-              </a>
+                <el-image
+                  v-if="isImageAttachment(attachment)"
+                  class="block aspect-square w-full overflow-hidden rounded-[var(--pc-radius-sm)]"
+                  :src="attachment.url"
+                  :alt="attachment.file_name"
+                  fit="cover"
+                  :preview-src-list="evidenceImageUrls(evidence.attachments)"
+                  :initial-index="evidenceImageIndex(evidence.attachments, attachment)"
+                  preview-teleported
+                  hide-on-click-modal
+                />
+                <a
+                  v-else
+                  class="grid aspect-square w-full place-items-center rounded-[var(--pc-radius-sm)] bg-[var(--pc-surface-soft)] no-underline"
+                  :href="attachment.url"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <el-icon :size="24" class="text-[var(--pc-text-muted)]"><Document /></el-icon>
+                </a>
+                <a
+                  class="overflow-hidden text-ellipsis whitespace-nowrap no-underline hover:text-[var(--pc-action)]"
+                  :href="attachment.url"
+                  target="_blank"
+                  rel="noreferrer"
+                  :title="attachment.file_name"
+                >{{ attachment.file_name }}</a>
+              </div>
             </div>
           </article>
           <el-empty v-if="!evidences.length" :image-size="56" description="暂无证据记录">

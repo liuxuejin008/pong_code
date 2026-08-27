@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { Plus, Search } from '@element-plus/icons-vue'
+import { ArrowDown, Plus, Search } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { getBugs, getBugStats } from '@/api/bugs'
+import { getBugs, getBugStats, updateBug } from '@/api/bugs'
 import { getRequirements } from '@/api/requirements'
 import { getUsers } from '@/api/users'
 import { apiErrorMessage } from '@/api/client'
@@ -12,13 +12,13 @@ import LoadingSkeleton from '@/components/loading-skeleton.vue'
 import OverflowTooltip from '@/components/overflow-tooltip.vue'
 import PageHeader from '@/components/page-header.vue'
 import StatCard from '@/components/stat-card.vue'
-import StatusTag from '@/components/status-tag.vue'
 import BugDialog from '@/components/business/bug-dialog.vue'
 import BugDetailDialog from '@/components/business/bug-detail-dialog.vue'
 import BugViewDialog from '@/components/business/bug-view-dialog.vue'
 import { getUserAvatarStyle } from '@/shared/avatar-color'
-import { bugDictLabel, bugPlatformLabels, bugPriorityLabels, bugStatusLabels, bugTypeLabels } from '@/shared/bug'
+import { bugDictLabel, bugPlatformLabels, bugPriorityLabels, bugStatusLabels, bugStatusOptions, bugTypeLabels } from '@/shared/bug'
 import { markdownToPlainText } from '@/shared/markdown'
+import { statusColor } from '@/shared/status'
 import { useProjectContext } from '@/shared/use-project-context'
 
 interface BugStats {
@@ -80,6 +80,31 @@ async function load() {
 function resetFilters() {
   Object.assign(filters, { search: '', status: '', severity: '', assignee_id: '' })
   void load()
+}
+
+/** 状态 pill 样式：与看板缺陷卡片一致，按状态着色 */
+function bugStatusPillStyle(bug: Bug) {
+  const color = statusColor(bug.status)
+  return {
+    color,
+    backgroundColor: `color-mix(in srgb, ${color} 10%, var(--pc-surface))`,
+  }
+}
+
+/** 行内快速修改缺陷状态：乐观更新，失败回滚并刷新统计 */
+async function changeBugStatus(row: Bug, status: Bug['status']) {
+  if (row.status === status)
+    return
+  const previous = row.status
+  row.status = status
+  try {
+    await updateBug(row.id, { status })
+    Object.assign(stats, await getBugStats(projectId.value))
+  }
+  catch (error) {
+    row.status = previous
+    ElMessage.error(apiErrorMessage(error, '更新缺陷状态失败'))
+  }
 }
 
 function openBug(item: Bug) {
@@ -184,7 +209,39 @@ onMounted(load)
               <template #default="{ row }"><span class="text-xs font-semibold text-[var(--pc-danger)]">S{{ row.severity }}</span></template>
             </el-table-column>
             <el-table-column label="状态" width="110">
-              <template #default="{ row }"><StatusTag :status="row.status" :label="bugStatusLabels[row.status as Bug['status']]" /></template>
+              <template #default="{ row }">
+                <el-dropdown
+                  trigger="click"
+                  :persistent="false"
+                  @click.stop
+                  @command="(status: Bug['status']) => changeBugStatus(row, status)"
+                >
+                  <span
+                    class="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-[14px] font-medium"
+                    :style="bugStatusPillStyle(row)"
+                    :title="`点击修改状态（当前：${bugStatusLabels[row.status as Bug['status']]}）`"
+                    @click.stop
+                  >
+                    {{ bugStatusLabels[row.status as Bug['status']] }}
+                    <el-icon :size="12" class="opacity-70"><ArrowDown /></el-icon>
+                  </span>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item
+                        v-for="opt in bugStatusOptions"
+                        :key="opt.value"
+                        :command="opt.value"
+                        :disabled="opt.value === row.status"
+                      >
+                        <span class="inline-flex items-center gap-1.5">
+                          <span class="h-1.5 w-1.5 shrink-0 rounded-full" :style="{ backgroundColor: statusColor(opt.value) }" />
+                          {{ opt.label }}
+                        </span>
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </template>
             </el-table-column>
             <el-table-column prop="assignee_name" label="负责人" width="130">
               <template #default="{ row }">
@@ -237,7 +294,36 @@ onMounted(load)
           <article v-for="item in bugs" :key="item.id" class="grid gap-2.5 rounded-[var(--pc-radius-card)] border border-[var(--pc-border)] bg-[var(--pc-surface)] p-3.5" role="button" tabindex="0" @click="openBug(item)" @keydown.enter.self="openBug(item)" @keydown.space.self.prevent="openBug(item)">
             <header class="flex items-center justify-between gap-3 text-[13px] text-[var(--pc-text-secondary)]">
               <span>{{ item.item_code || `BUG-${item.id}` }}</span>
-              <StatusTag :status="item.status" :label="bugStatusLabels[item.status]" />
+              <el-dropdown
+                trigger="click"
+                :persistent="false"
+                @click.stop
+                @command="(status: Bug['status']) => changeBugStatus(item, status)"
+              >
+                <span
+                  class="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-medium"
+                  :style="bugStatusPillStyle(item)"
+                  @click.stop
+                >
+                  {{ bugStatusLabels[item.status as Bug['status']] }}
+                  <el-icon :size="11" class="opacity-70"><ArrowDown /></el-icon>
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item
+                      v-for="opt in bugStatusOptions"
+                      :key="opt.value"
+                      :command="opt.value"
+                      :disabled="opt.value === item.status"
+                    >
+                      <span class="inline-flex items-center gap-1.5">
+                        <span class="h-1.5 w-1.5 shrink-0 rounded-full" :style="{ backgroundColor: statusColor(opt.value) }" />
+                        {{ opt.label }}
+                      </span>
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </header>
             <strong class="min-w-0 break-words text-[15px] font-semibold" style="overflow-wrap: anywhere">{{ item.title }}</strong>
             <p class="line-clamp-2 min-w-0 text-[13px] text-[var(--pc-text-secondary)]">
