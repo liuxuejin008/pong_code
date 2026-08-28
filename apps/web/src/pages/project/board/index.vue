@@ -369,6 +369,7 @@ async function moveItem(payload: {
     return
   }
 
+  const prevStatus = moving.status
   moving.requirement_id = payload.requirementId
   moving.requirement_title = targetLane.requirement?.title || null
   if (moving.item_type === 'bug') {
@@ -388,8 +389,10 @@ async function moveItem(payload: {
     : Math.min(payload.newIndex, targetItems.length)
   targetItems.splice(targetIndex, 0, moving)
 
+  // 缺陷同桶切换精确状态（如处理中↔已修复）时列与泳道未变，也需发请求持久化
   const metadataChanged = payload.sourceStatus !== payload.status
     || payload.sourceLaneId !== laneId(targetLane)
+    || moving.status !== prevStatus
   if (!metadataChanged)
     return
 
