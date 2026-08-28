@@ -126,6 +126,14 @@ function handleImageClick(event: MouseEvent) {
   padding-left: 1.6em;
 }
 
+.markdown-renderer ul {
+  list-style-type: disc;
+}
+
+.markdown-renderer ol {
+  list-style-type: decimal;
+}
+
 .markdown-renderer li + li {
   margin-top: 4px;
 }
