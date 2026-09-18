@@ -90,7 +90,7 @@ async function submit() {
           </el-select>
         </el-form-item>
         <el-form-item label="预估工时">
-          <el-input-number v-model="form.time_estimate" :min="0" :step="0.5" class="w-full" />
+          <el-input-number v-model="form.time_estimate" :min="0" :step="0.5" :precision="1" class="w-full" />
         </el-form-item>
         <el-form-item label="负责人">
           <el-select v-model="form.assignee_id" filterable clearable class="w-full">

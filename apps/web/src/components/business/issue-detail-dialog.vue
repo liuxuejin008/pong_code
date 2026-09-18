@@ -197,7 +197,7 @@ async function removeWorklog(log: WorkLog) {
                 </el-select>
               </el-form-item>
               <el-form-item label="预估工时">
-                <el-input-number v-model="form.time_estimate" :min="0" :step="0.5" class="w-full" />
+                <el-input-number v-model="form.time_estimate" :min="0" :step="0.5" :precision="1" class="w-full" />
               </el-form-item>
               <el-form-item label="已登记工时">
                 <el-input :model-value="`${issue?.time_spent || 0} 小时`" disabled />

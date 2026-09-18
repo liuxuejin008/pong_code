@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS `issue` (
   `description` TEXT NULL,
   `status` VARCHAR(20) NULL DEFAULT 'todo',
   `priority` INT NULL DEFAULT 3,
-  `time_estimate` INT NULL DEFAULT 0,
+  `time_estimate` FLOAT NULL DEFAULT 0,
   `item_code` VARCHAR(16) NULL,
   `assignee_id` INT NULL,
   `project_id` INT NULL,

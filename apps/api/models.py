@@ -282,7 +282,7 @@ class Issue(db.Model):
     description = db.Column(db.Text)
     status = db.Column(db.String(20), default='todo') # todo, doing, done
     priority = db.Column(db.Integer, default=3) # 1 (High) to 5 (Low)
-    time_estimate = db.Column(db.Integer, default=0) # Time estimate in hours
+    time_estimate = db.Column(db.Float, default=0)  # 预估工时（小时，支持 0.5）
     item_code = db.Column(db.String(16), nullable=True)
 
     assignee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)

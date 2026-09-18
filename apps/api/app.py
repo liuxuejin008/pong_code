@@ -127,6 +127,33 @@ def ensure_bug_dict_schema():
         db.session.commit()
 
 
+def ensure_issue_time_estimate_schema():
+    """兼容历史数据库：任务预估工时从整数小时改为小数小时。"""
+    inspector = inspect(db.engine)
+    if 'issue' not in inspector.get_table_names():
+        return
+
+    columns = {column['name']: column for column in inspector.get_columns('issue')}
+    column = columns.get('time_estimate')
+    dialect = db.engine.dialect.name
+    if column is None:
+        db.session.execute(text('ALTER TABLE issue ADD COLUMN time_estimate FLOAT DEFAULT 0'))
+        db.session.commit()
+        return
+
+    type_name = str(column['type']).upper()
+    if any(token in type_name for token in ('FLOAT', 'REAL', 'DOUBLE', 'NUMERIC', 'DECIMAL')):
+        return
+    if 'INT' not in type_name:
+        return
+
+    if dialect == 'mysql':
+        db.session.execute(text(
+            'ALTER TABLE issue MODIFY COLUMN time_estimate FLOAT NULL DEFAULT 0'
+        ))
+        db.session.commit()
+
+
 def ensure_cli_token_schema():
     """兼容历史数据库：补齐用户 CLI token 并为存量用户生成凭证。"""
     from models import User, generate_cli_token
@@ -278,6 +305,7 @@ def create_app():
         ensure_feishu_bot_schema()
         ensure_item_code_schema()
         ensure_bug_dict_schema()
+        ensure_issue_time_estimate_schema()
         ensure_cli_token_schema()
 
     return app
