@@ -70,7 +70,7 @@ func TestAuthLoginValidatesAndSavesToken(t *testing.T) {
 	}
 	defer tokenFile.Close()
 	defer os.Remove(tokenFile.Name())
-	if _, err := tokenFile.WriteString("\ncli-token\n"); err != nil {
+	if _, err := tokenFile.WriteString("cli-token\n"); err != nil {
 		t.Fatalf("WriteString() error = %v", err)
 	}
 	if _, err := tokenFile.Seek(0, 0); err != nil {
@@ -79,8 +79,50 @@ func TestAuthLoginValidatesAndSavesToken(t *testing.T) {
 
 	output, err := runCommand(
 		t,
-		// 第一行留空表示接受 --server 传入的服务地址。
+		// --server 已提供服务地址，stdin 只用于输入 Token。
 		tokenFile,
+		"--config", path,
+		"--server", server.URL,
+		"auth", "login",
+	)
+	if err != nil {
+		t.Fatalf("auth login error = %v, output = %q", err, output)
+	}
+
+	loaded, err := config.Load(path)
+	if err != nil {
+		t.Fatalf("config.Load() error = %v", err)
+	}
+	if loaded.Server != server.URL || loaded.Token != "cli-token" {
+		t.Fatalf("config = %+v", loaded)
+	}
+	if !strings.Contains(output, "已登录：ada") {
+		t.Fatalf("output = %q", output)
+	}
+}
+
+func TestAuthLoginNonInteractiveWithServerAndToken(t *testing.T) {
+	t.Setenv("PONGCODE_TOKEN", "cli-token")
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if got := request.Header.Get("Authorization"); got != "Bearer cli-token" {
+			t.Errorf("Authorization = %q", got)
+		}
+		_, _ = writer.Write([]byte(`{"user":{"id":1,"username":"ada","email":"ada@example.com"}}`))
+	}))
+	defer server.Close()
+
+	path := filepath.Join(t.TempDir(), "config.json")
+	// stdin 为空文件：一旦实现仍尝试提示输入，登录会失败。
+	emptyStdin, err := os.CreateTemp(t.TempDir(), "stdin")
+	if err != nil {
+		t.Fatalf("CreateTemp() error = %v", err)
+	}
+	defer emptyStdin.Close()
+	defer os.Remove(emptyStdin.Name())
+
+	output, err := runCommand(
+		t,
+		emptyStdin,
 		"--config", path,
 		"--server", server.URL,
 		"auth", "login",
@@ -361,6 +403,184 @@ func TestRequirementCreateSendsPayloadAndShowsID(t *testing.T) {
 		}
 	}
 	if !strings.Contains(output, "已创建需求 Login requirement（ID 30）") {
+		t.Fatalf("output = %q", output)
+	}
+}
+
+func TestRequirementUpdateSendsPayload(t *testing.T) {
+	t.Setenv("PONGCODE_TOKEN", "cli-token")
+	var updatedBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != "PUT" || request.URL.Path != "/api/requirements/30" {
+			t.Errorf("unexpected request %s %s", request.Method, request.URL.Path)
+			http.NotFound(writer, request)
+			return
+		}
+		if err := json.NewDecoder(request.Body).Decode(&updatedBody); err != nil {
+			t.Errorf("decode request = %v", err)
+		}
+		_, _ = writer.Write([]byte(`{
+			"id":30,
+			"title":"Login requirement v2",
+			"status":"in_progress",
+			"priority":1,
+			"sprint_id":21,
+			"sprint_name":"Sprint 21"
+		}`))
+	}))
+	defer server.Close()
+
+	path := tempConfig(t, config.Config{})
+	output, err := runCommand(
+		t,
+		nil,
+		"--config", path,
+		"--server", server.URL,
+		"requirement", "update", "30",
+		"--title", "Login requirement v2",
+		"--status", "in_progress",
+		"--priority", "1",
+		"--sprint-id", "21",
+		"--expected-delivery-date", "2026-11-15",
+	)
+	if err != nil {
+		t.Fatalf("requirement update error = %v, output = %q", err, output)
+	}
+
+	want := map[string]any{
+		"title":                  "Login requirement v2",
+		"status":                 "in_progress",
+		"priority":               float64(1),
+		"sprint_id":              float64(21),
+		"expected_delivery_date": "2026-11-15",
+	}
+	for key, value := range want {
+		if updatedBody[key] != value {
+			t.Fatalf("updated body[%q] = %#v, want %#v; body = %#v", key, updatedBody[key], value, updatedBody)
+		}
+	}
+	if !strings.Contains(output, "已更新需求 Login requirement v2（ID 30）") {
+		t.Fatalf("output = %q", output)
+	}
+}
+
+func TestRequirementUpdateClearFlagsSendNull(t *testing.T) {
+	t.Setenv("PONGCODE_TOKEN", "cli-token")
+	var updatedBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != "PUT" || request.URL.Path != "/api/requirements/30" {
+			t.Errorf("unexpected request %s %s", request.Method, request.URL.Path)
+			http.NotFound(writer, request)
+			return
+		}
+		if err := json.NewDecoder(request.Body).Decode(&updatedBody); err != nil {
+			t.Errorf("decode request = %v", err)
+		}
+		_, _ = writer.Write([]byte(`{"id":30,"title":"Login requirement"}`))
+	}))
+	defer server.Close()
+
+	path := tempConfig(t, config.Config{})
+	output, err := runCommand(
+		t,
+		nil,
+		"--config", path,
+		"--server", server.URL,
+		"requirement", "update", "30", "--clear-sprint", "--clear-delivery-date",
+	)
+	if err != nil {
+		t.Fatalf("requirement update error = %v, output = %q", err, output)
+	}
+
+	if value, ok := updatedBody["sprint_id"]; !ok || value != nil {
+		t.Fatalf("updated body[sprint_id] = %#v, want explicit null; body = %#v", updatedBody["sprint_id"], updatedBody)
+	}
+	if value, ok := updatedBody["expected_delivery_date"]; !ok || value != nil {
+		t.Fatalf("updated body[expected_delivery_date] = %#v, want explicit null; body = %#v", updatedBody["expected_delivery_date"], updatedBody)
+	}
+}
+
+func TestRequirementUpdateRejectsInvalidDate(t *testing.T) {
+	t.Setenv("PONGCODE_TOKEN", "cli-token")
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		t.Errorf("unexpected request %s %s", request.Method, request.URL.Path)
+		http.NotFound(writer, request)
+	}))
+	defer server.Close()
+
+	path := tempConfig(t, config.Config{})
+	output, err := runCommand(
+		t,
+		nil,
+		"--config", path,
+		"--server", server.URL,
+		"requirement", "update", "30", "--expected-delivery-date", "2026/11/15",
+	)
+	if err == nil || !strings.Contains(err.Error(), "YYYY-MM-DD") {
+		t.Fatalf("error = %v, output = %q", err, output)
+	}
+}
+
+func TestRequirementDeleteReportsCascadedTasks(t *testing.T) {
+	t.Setenv("PONGCODE_TOKEN", "cli-token")
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != "DELETE" || request.URL.Path != "/api/requirements/30" {
+			t.Errorf("unexpected request %s %s", request.Method, request.URL.Path)
+			http.NotFound(writer, request)
+			return
+		}
+		_, _ = writer.Write([]byte(`{"success":true,"deleted_count":1,"deleted_issue_count":3}`))
+	}))
+	defer server.Close()
+
+	path := tempConfig(t, config.Config{})
+	output, err := runCommand(
+		t,
+		nil,
+		"--config", path,
+		"--server", server.URL,
+		"requirement", "delete", "30", "--yes",
+	)
+	if err != nil {
+		t.Fatalf("requirement delete error = %v, output = %q", err, output)
+	}
+	if !strings.Contains(output, "需求 30 已删除，连带删除 3 个任务") {
+		t.Fatalf("output = %q", output)
+	}
+}
+
+func TestRequirementDeleteCancelsWithoutConfirmation(t *testing.T) {
+	t.Setenv("PONGCODE_TOKEN", "cli-token")
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		t.Errorf("unexpected request %s %s", request.Method, request.URL.Path)
+		http.NotFound(writer, request)
+	}))
+	defer server.Close()
+
+	stdin, err := os.CreateTemp(t.TempDir(), "stdin")
+	if err != nil {
+		t.Fatalf("CreateTemp() error = %v", err)
+	}
+	defer stdin.Close()
+	if _, err := stdin.WriteString("n\n"); err != nil {
+		t.Fatalf("WriteString() error = %v", err)
+	}
+	if _, err := stdin.Seek(0, 0); err != nil {
+		t.Fatalf("Seek() error = %v", err)
+	}
+
+	path := tempConfig(t, config.Config{})
+	output, err := runCommand(
+		t,
+		stdin,
+		"--config", path,
+		"--server", server.URL,
+		"requirement", "delete", "30",
+	)
+	if err != nil {
+		t.Fatalf("requirement delete error = %v, output = %q", err, output)
+	}
+	if !strings.Contains(output, "已取消删除") {
 		t.Fatalf("output = %q", output)
 	}
 }

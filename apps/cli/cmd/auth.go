@@ -16,6 +16,7 @@ func addAuthCommands(root *cobra.Command) {
 	auth.AddCommand(&cobra.Command{
 		Use:   "login",
 		Short: "登录并保存 CLI Token",
+		Long:  "登录并保存 CLI Token。服务地址由 --server 或 PONGCODE_SERVER、Token 由 PONGCODE_TOKEN 提供时直接使用；缺失的信息才会提示输入，全部提供时无需交互。",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loaded, path, err := loadConfigFile(cmd)
 			if err != nil {
@@ -26,25 +27,25 @@ func addAuthCommands(root *cobra.Command) {
 			if err != nil {
 				return err
 			}
-			defaultServer := strings.TrimSpace(flagServer)
-			if defaultServer == "" {
-				defaultServer = strings.TrimSpace(os.Getenv("PONGCODE_SERVER"))
-			}
-			if defaultServer == "" {
-				defaultServer = strings.TrimSpace(loaded.Server)
-			}
-			if defaultServer == "" {
-				defaultServer = "http://localhost:5001"
+			server := strings.TrimSpace(flagServer)
+			if server == "" {
+				server = strings.TrimSpace(os.Getenv("PONGCODE_SERVER"))
 			}
 
 			input := bufio.NewReader(os.Stdin)
-			fmt.Printf("服务地址 [%s]: ", defaultServer)
-			server, err := readLine(input, "")
-			if err != nil {
-				return err
-			}
 			if server == "" {
-				server = defaultServer
+				defaultServer := strings.TrimSpace(loaded.Server)
+				if defaultServer == "" {
+					defaultServer = "http://localhost:5001"
+				}
+				fmt.Printf("服务地址 [%s]: ", defaultServer)
+				server, err = readLine(input, "")
+				if err != nil {
+					return err
+				}
+				if server == "" {
+					server = defaultServer
+				}
 			}
 
 			token := strings.TrimSpace(os.Getenv("PONGCODE_TOKEN"))

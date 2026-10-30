@@ -63,6 +63,12 @@ type Requirement struct {
 	SprintName string `json:"sprint_name"`
 }
 
+type RequirementDeleteResult struct {
+	Success           bool `json:"success"`
+	DeletedCount      int  `json:"deleted_count"`
+	DeletedIssueCount int  `json:"deleted_issue_count"`
+}
+
 type Issue struct {
 	ID               int64   `json:"id"`
 	ItemCode         string  `json:"item_code"`

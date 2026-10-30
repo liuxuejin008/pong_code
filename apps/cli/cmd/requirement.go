@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/liuxuejin008/pong_code/apps/cli/internal/api"
 	"github.com/spf13/cobra"
@@ -172,7 +173,125 @@ func addRequirementCommands(root *cobra.Command) {
 	createCmd.Flags().Int("priority", 3, "优先级：1 最高，5 最低")
 	createCmd.Flags().String("status", "pending", "pending、in_progress、testing 或 completed")
 
-	requirementCmd.AddCommand(listCmd, createCmd)
+	updateCmd := &cobra.Command{
+		Use:   "update <requirement-id>",
+		Short: "更新需求",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			runtime, err := newRuntime(cmd, true)
+			if err != nil {
+				return err
+			}
+			requirementID, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil || requirementID <= 0 {
+				return errors.New("需求 ID 必须是正整数")
+			}
+			body := map[string]any{}
+			if cmd.Flags().Changed("title") {
+				title, _ := cmd.Flags().GetString("title")
+				title = strings.TrimSpace(title)
+				if title == "" {
+					return errors.New("需求标题不能为空")
+				}
+				body["title"] = title
+			}
+			if cmd.Flags().Changed("content") {
+				content, _ := cmd.Flags().GetString("content")
+				body["content"] = content
+			}
+			if cmd.Flags().Changed("status") {
+				status, _ := cmd.Flags().GetString("status")
+				if !validRequirementStatus(status) {
+					return errors.New("需求状态必须是 pending、in_progress、testing 或 completed")
+				}
+				body["status"] = status
+			}
+			if cmd.Flags().Changed("priority") {
+				priority, _ := cmd.Flags().GetInt("priority")
+				if priority < 1 || priority > 5 {
+					return errors.New("优先级必须在 1 到 5 之间")
+				}
+				body["priority"] = priority
+			}
+			if cmd.Flags().Changed("clear-sprint") {
+				body["sprint_id"] = nil
+			} else if cmd.Flags().Changed("sprint-id") {
+				sprintID, _ := cmd.Flags().GetInt64("sprint-id")
+				if sprintID <= 0 {
+					return errors.New("迭代 ID 必须是正整数")
+				}
+				body["sprint_id"] = sprintID
+			}
+			if cmd.Flags().Changed("clear-delivery-date") {
+				body["expected_delivery_date"] = nil
+			} else if cmd.Flags().Changed("expected-delivery-date") {
+				date, _ := cmd.Flags().GetString("expected-delivery-date")
+				if _, parseErr := time.Parse("2006-01-02", date); parseErr != nil {
+					return errors.New("期望交付日期格式错误，请使用 YYYY-MM-DD")
+				}
+				body["expected_delivery_date"] = date
+			}
+			if len(body) == 0 {
+				return errors.New("请至少提供一个要更新的字段")
+			}
+
+			var requirement api.Requirement
+			path := fmt.Sprintf("/requirements/%d", requirementID)
+			if err := runtime.client.Do("PUT", path, body, &requirement); err != nil {
+				return err
+			}
+			fmt.Printf("已更新需求 %s（ID %d）\n", requirement.Title, requirement.ID)
+			return nil
+		},
+	}
+	updateCmd.Flags().String("title", "", "需求标题")
+	updateCmd.Flags().String("content", "", "需求内容")
+	updateCmd.Flags().String("status", "", "pending、in_progress、testing 或 completed")
+	updateCmd.Flags().Int("priority", 3, "优先级：1 最高，5 最低")
+	updateCmd.Flags().Int64("sprint-id", 0, "绑定的迭代 ID")
+	updateCmd.Flags().Bool("clear-sprint", false, "解除迭代绑定")
+	updateCmd.Flags().String("expected-delivery-date", "", "期望交付日期，格式 YYYY-MM-DD")
+	updateCmd.Flags().Bool("clear-delivery-date", false, "清除期望交付日期")
+
+	deleteCmd := &cobra.Command{
+		Use:   "delete <requirement-id>",
+		Short: "删除需求",
+		Long:  "删除需求及其下所有任务，需要组织管理员权限。",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			runtime, err := newRuntime(cmd, true)
+			if err != nil {
+				return err
+			}
+			requirementID, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil || requirementID <= 0 {
+				return errors.New("需求 ID 必须是正整数")
+			}
+			yes, err := cmd.Flags().GetBool("yes")
+			if err != nil {
+				return err
+			}
+			if !yes {
+				confirmed, err := confirm("删除会同时删除需求下的所有任务且不可恢复，是否继续?")
+				if err != nil {
+					return err
+				}
+				if !confirmed {
+					fmt.Println("已取消删除")
+					return nil
+				}
+			}
+			var result api.RequirementDeleteResult
+			path := fmt.Sprintf("/requirements/%d", requirementID)
+			if err := runtime.client.Do("DELETE", path, nil, &result); err != nil {
+				return err
+			}
+			fmt.Printf("需求 %d 已删除，连带删除 %d 个任务\n", requirementID, result.DeletedIssueCount)
+			return nil
+		},
+	}
+	deleteCmd.Flags().Bool("yes", false, "跳过删除确认")
+
+	requirementCmd.AddCommand(listCmd, createCmd, updateCmd, deleteCmd)
 	root.AddCommand(requirementCmd)
 }
 

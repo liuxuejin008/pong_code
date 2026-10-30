@@ -1,6 +1,6 @@
 # PongCode CLI 使用指南
 
-本文档介绍 `pongcode` 命令行工具的安装、授权、上下文配置、需求查询/创建和任务管理。
+本文档介绍 `pongcode` 命令行工具的安装、授权、上下文配置、需求管理和任务管理。
 
 当前发布版本：`v0.1.1`。
 
@@ -50,10 +50,16 @@ http://localhost:5001（使用pongcode线上地址）
 pongcode auth login
 ```
 
-命令会依次提示：
+`auth login` 只提示缺失的信息：服务地址优先取 `--server` 或 `PONGCODE_SERVER`，Token 优先取 `PONGCODE_TOKEN`，都没有时才依次提示输入：
 
 1. 服务地址，例如 `https://pongcode.example.com`
 2. CLI Token
+
+因此也可以完全免交互登录，适合脚本和 CI：
+
+```bash
+PONGCODE_TOKEN="<your-cli-token>" pongcode auth login --server "https://pongcode.example.com"
+```
 
 CLI Token 从 PongCode 页面的「个人资料」获取。Token 等同于账号凭证，不要提交到代码仓库，也不要分享给他人。
 
@@ -236,6 +242,58 @@ pongcode requirement create \
 | `--status` | 可选 | 默认 `pending` |
 
 如果需求要出现在某个迭代的看板泳道中，创建时需要绑定对应 `--sprint-id`。
+
+### 更新需求
+
+更新标题、内容、优先级和状态：
+
+```bash
+pongcode requirement update 30 \
+  --title "登录链路 v2" \
+  --content "补充第三方登录" \
+  --priority 1 \
+  --status in_progress
+```
+
+修改迭代绑定和期望交付日期：
+
+```bash
+pongcode requirement update 30 --sprint-id 2
+pongcode requirement update 30 --clear-sprint
+pongcode requirement update 30 --expected-delivery-date 2026-11-15
+pongcode requirement update 30 --clear-delivery-date
+```
+
+参数说明：
+
+| 参数 | 说明 |
+| --- | --- |
+| `--title` | 需求标题，不能为空 |
+| `--content` | 需求内容 |
+| `--status` | `pending` / `in_progress` / `testing` / `completed` |
+| `--priority` | `1` 到 `5`，`1` 最高 |
+| `--sprint-id` | 绑定的迭代 ID |
+| `--clear-sprint` | 解除迭代绑定 |
+| `--expected-delivery-date` | 期望交付日期，格式 `YYYY-MM-DD` |
+| `--clear-delivery-date` | 清除期望交付日期 |
+
+至少提供一个要更新的字段，否则命令会报错。
+
+### 删除需求
+
+交互确认后删除：
+
+```bash
+pongcode requirement delete 30
+```
+
+跳过确认：
+
+```bash
+pongcode requirement delete 30 --yes
+```
+
+删除需求需要组织管理员权限，且会级联删除需求下的所有任务，操作不可恢复；删除成功后会显示连带删除的任务数量。
 
 ## 6. 任务管理
 
