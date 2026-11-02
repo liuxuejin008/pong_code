@@ -1,6 +1,6 @@
 """路由入参解析工具：统一处理空字符串、数字和日期格式。"""
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 
 def parse_nullable_int(value, field_name):
@@ -43,3 +43,11 @@ def parse_date(value, field_name, required=False):
         return datetime.strptime(value, '%Y-%m-%d').date()
     except ValueError as exc:
         raise ValueError(f'{field_name} 日期格式错误，请使用 YYYY-MM-DD') from exc
+
+
+def parse_worklog_date(value):
+    date = parse_date(value, 'date')
+    if date is not None:
+        return date
+    now = datetime.now(timezone(timedelta(hours=8)))
+    return (now - timedelta(hours=11)).date()

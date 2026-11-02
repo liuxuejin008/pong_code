@@ -205,10 +205,10 @@ describe('BoardTimeDropdown', () => {
     await flushPromises()
 
     expect(apiMocks.updateIssue).toHaveBeenCalledWith(11, { time_estimate: 6 })
-    expect(apiMocks.addIssueWorklog).toHaveBeenCalledWith(11, expect.objectContaining({
+    expect(apiMocks.addIssueWorklog).toHaveBeenCalledWith(11, {
       hours: 2,
       description: '完成联调',
-    }))
+    })
     expect(wrapper.emitted('changed')).toBeTruthy()
     expect(messageMocks.success).toHaveBeenCalled()
   })
@@ -220,7 +220,7 @@ describe('BoardTimeDropdown', () => {
     await wrapper.get('[data-testid="board-time-save-button"]').trigger('click')
     await flushPromises()
 
-    expect(apiMocks.addBugWorklog).toHaveBeenCalledWith(22, expect.objectContaining({ hours: 1 }))
+    expect(apiMocks.addBugWorklog).toHaveBeenCalledWith(22, { hours: 1, description: '' })
     expect(apiMocks.updateBug).not.toHaveBeenCalled()
     expect(apiMocks.addIssueWorklog).not.toHaveBeenCalled()
   })

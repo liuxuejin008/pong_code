@@ -12,17 +12,16 @@ const emit = defineEmits<{
   submit: [value: { date: string; hours: number; description: string }, done: () => void]
 }>()
 
-const today = new Date().toISOString().slice(0, 10)
 const submitting = ref(false)
 const form = reactive({
-  date: today,
+  date: '',
   hours: 1,
   description: '',
 })
 
 function submit() {
   submitting.value = true
-  emit('submit', { ...form }, () => {
+  emit('submit', { ...form, date: form.date || '' }, () => {
     submitting.value = false
     form.description = ''
   })
@@ -32,8 +31,8 @@ function submit() {
 <template>
   <el-form class="pc-compact-form-surface" label-position="top" @submit.prevent="submit">
     <div class="pc-form-grid grid grid-cols-2 max-[480px]:grid-cols-1">
-      <el-form-item label="日期" required>
-        <el-date-picker v-model="form.date" type="date" value-format="YYYY-MM-DD" class="w-full" />
+      <el-form-item label="日期（可选）">
+        <el-date-picker v-model="form.date" type="date" value-format="YYYY-MM-DD" placeholder="留空按登记时间计算" class="w-full" />
       </el-form-item>
       <el-form-item label="小时" required>
         <el-input-number v-model="form.hours" :min="0.1" :step="0.5" :precision="1" class="w-full" />

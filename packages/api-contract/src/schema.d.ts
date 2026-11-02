@@ -846,6 +846,12 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        WorklogCreate: {
+            /** @description 手动指定工时日期；留空时按北京时间 11:00 分界自动计算。 */
+            date?: string | "" | null;
+            hours: number | string;
+            description?: string | null;
+        };
         AuthStatus: {
             authenticated: boolean;
             user?: components["schemas"]["User"];
@@ -2160,9 +2166,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["WorklogCreate"];
             };
         };
         responses: {
@@ -2404,9 +2408,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["WorklogCreate"];
             };
         };
         responses: {
@@ -2629,9 +2631,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["WorklogCreate"];
             };
         };
         responses: {
