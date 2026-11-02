@@ -413,7 +413,12 @@ paths:
       - $ref: "#/components/parameters/SprintId"
     post:
       operationId: createSprintWorklog
-      requestBody: *json-body
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorklogCreate"
       responses: *created-response
   /api/sprints/{sprintId}/requirements:
     parameters:
@@ -488,7 +493,12 @@ paths:
       - $ref: "#/components/parameters/IssueId"
     post:
       operationId: createIssueWorklog
-      requestBody: *json-body
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorklogCreate"
       responses: *created-response
   /api/issues/{issueId}/worklogs/{worklogId}:
     parameters:
@@ -553,7 +563,12 @@ paths:
       - $ref: "#/components/parameters/BugId"
     post:
       operationId: createBugWorklog
-      requestBody: *json-body
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorklogCreate"
       responses: *created-response
   /api/bugs/{bugId}/worklogs/{worklogId}:
     parameters:
@@ -687,6 +702,24 @@ components:
         type: string
 
   schemas:
+    WorklogCreate:
+      type: object
+      required: [hours]
+      properties:
+        date:
+          description: 手动指定工时日期；留空时按北京时间 11:00 分界自动计算。
+          anyOf:
+            - type: string
+              format: date
+            - type: string
+              enum: [""]
+            - type: "null"
+        hours:
+          anyOf:
+            - type: number
+            - type: string
+        description:
+          type: [string, "null"]
     AuthStatus:
       type: object
       required:

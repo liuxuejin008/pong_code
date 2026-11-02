@@ -96,7 +96,6 @@ async function save() {
 
     if (shouldLog) {
       const payload = {
-        date: new Date().toISOString().slice(0, 10),
         hours,
         description,
       }

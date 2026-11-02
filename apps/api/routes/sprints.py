@@ -10,7 +10,7 @@ from models import (
     Project, Sprint, Issue, Requirement, Bug,
     SprintWorkLog, WorkLog, organization_members,
 )
-from routes.input_utils import parse_nullable_int, parse_int, parse_float, parse_date
+from routes.input_utils import parse_nullable_int, parse_int, parse_float, parse_date, parse_worklog_date
 from routes.item_codes import generate_sprint_code_prefix
 
 bp = Blueprint('sprints', __name__, url_prefix='/api')
@@ -156,7 +156,7 @@ def add_sprint_worklog(sprint_id):
         return jsonify({'error': '无权访问'}), 403
     data = request.get_json()
     try:
-        log_date = parse_date(data.get('date'), 'date', required=True)
+        log_date = parse_worklog_date(data.get('date'))
         hours = parse_float(data.get('hours'), 'hours')
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400

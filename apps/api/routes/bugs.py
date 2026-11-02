@@ -22,7 +22,7 @@ from models import (
     DISCOVERY_PHASE_LABELS,
     DISCOVERY_CHANNEL_LABELS,
 )
-from routes.input_utils import parse_nullable_int, parse_int, parse_float, parse_date
+from routes.input_utils import parse_nullable_int, parse_int, parse_float, parse_worklog_date
 from routes.item_codes import allocate_item_code
 from services.feishu_bot import (
     FeishuBotError,
@@ -489,7 +489,7 @@ def add_bug_worklog(bug_id):
         return jsonify({'error': '无权访问'}), 403
     data = request.get_json()
     try:
-        log_date = parse_date(data.get('date'), 'date', required=True)
+        log_date = parse_worklog_date(data.get('date'))
         hours = parse_float(data.get('hours'), 'hours')
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
